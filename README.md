@@ -59,4 +59,11 @@ https://immich.app/docs/features/command-line-interface#obtain-the-api-key
 
 5. **Data Persistence:** To streamline your experience, the server address and API key are securely saved in a database. This means you won't need to re-enter this information every time you use the app, making future interactions quicker and more seamless.
 
+## Disclaimer
+
+This software is provided "as is", without any warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+
+This program is still under development and may contain bugs or defects that could lead to data loss or damage. Users are cautioned to use it at their own risk. The developers assume no responsibility for any damages, loss of information, or any other kind of loss resulting from the use of this program.
+
+
 Enjoy exploring and managing duplicates in your Immich ecosystem with ease! If you encounter any issues or have suggestions for improvement, feel free to open an issue or submit a pull request.
