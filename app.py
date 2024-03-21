@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 import sqlite3
 import io
+from io import BytesIO
 from streamlit_image_comparison import image_comparison
 import streamlit as st
 
@@ -34,7 +35,7 @@ def startup_sidebar():
     immich_server_url, api_key, images_folder = load_settings_from_db()
 
     with st.sidebar.expander("Login Settings", expanded=False):
-        immich_server_url = st.text_input('IMMICH Server URL', immich_server_url)
+        immich_server_url = st.text_input('IMMICH Server URL', immich_server_url).rstrip('/')
         api_key = st.text_input('API Key', api_key)
         if st.button('Save Settings'):
             save_settings_to_db(immich_server_url, api_key, images_folder)
@@ -85,11 +86,21 @@ def stream_asset(asset_id, immich_server_url):
     asset_download_url = f"{immich_server_url}/api/download/asset/{asset_id}"
     # Stream the asset
     response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream','x-api-key': api_key}, stream=True)
-    if response.status_code == 200:
-        image_bytes = io.BytesIO(response.content)
-        image = Image.open(image_bytes)
-        return image  # Return the PIL Image object
-    return None
+    if response.status_code == 200 and 'image/' in response.headers.get('Content-Type', ''):
+        image_bytes = BytesIO(response.content)
+        try:
+            image = Image.open(image_bytes)
+            return image
+        except UnidentifiedImageError:
+            # Log error or save the problematic data for inspection
+            print(f"Failed to identify image for asset_id {asset_id}. Content-Type: {response.headers.get('Content-Type')}")
+            # Optionally, save or log the problematic bytes
+            # with open(f"debug_{asset_id}.bin", "wb") as f_debug:
+            #     f_debug.write(response.content)
+            return None
+    else:
+        print(f"Failed to fetch image for asset_id {asset_id}. Status code: {response.status_code}, Content-Type: {response.headers.get('Content-Type')}")
+        return None
 
 def get_asset_info(asset_id, assets, asset_info_required):
     # Search for the asset in the provided list of assets.
@@ -114,7 +125,7 @@ def get_asset_info(asset_id, assets, asset_info_required):
  
 def fetch_assets():
     # Remove trailing slash from immich_server_url if present
-    base_url = immich_server_url.rstrip('/')
+    base_url = immich_server_url
     asset_info_url = f"{base_url}/api/asset/"
     
     with st.spinner('Fetching assets...'):
