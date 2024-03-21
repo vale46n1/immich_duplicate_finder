@@ -113,13 +113,37 @@ def get_asset_info(asset_id, assets, asset_info_required):
         return None
  
 def fetch_assets():
-    asset_info_url = f"{immich_server_url}/api/asset/"
+    # Remove trailing slash from immich_server_url if present
+    base_url = immich_server_url.rstrip('/')
+    asset_info_url = f"{base_url}/api/asset/"
+    
     with st.spinner('Fetching assets...'):
-        response = requests.get(asset_info_url, headers={'Accept': 'application/json','x-api-key': api_key})
+        # Make the HTTP GET request
+        response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False)
+
+        # Check for HTTP errors
         response.raise_for_status()
-        assets = response.json()
-    st.success('Assets fetched successfully!')
-    return assets
+
+        # Check the Content-Type of the response
+        content_type = response.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            # Attempt to decode the JSON response
+            try:
+                if response.text:
+                    assets = response.json()
+                    st.success('Assets fetched successfully!')
+                    return assets
+                else:
+                    st.error('Received an empty response.')
+                    return None
+            except requests.exceptions.JSONDecodeError as e:
+                st.error('Failed to decode JSON from the response.')
+                st.error(f'Response content: {response.text}')
+                return None
+        else:
+            st.error(f'Unexpected Content-Type: {content_type}')
+            st.error(f'Response content: {response.text}')
+            return None
 
 def find_duplicates_hash(assets):
     """Find and return duplicates based on file hash."""
