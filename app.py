@@ -16,6 +16,15 @@ def load_settings_from_db():
     conn.close()
     return settings if settings else (None, None, None)
 
+def save_settings_to_db(immich_server_url, api_key, images_folder):
+    conn = sqlite3.connect('settings.db')
+    c = conn.cursor()
+    # This simple logic assumes one row of settings; adjust according to your needs
+    c.execute("DELETE FROM settings")  # Clear existing settings
+    c.execute("INSERT INTO settings VALUES (?, ?, ?)", (immich_server_url, api_key, images_folder))
+    conn.commit()
+    conn.close()
+
 def startup_sidebar():
     logo_path = "https://immich.app/img/immich-logo-stacked-dark.svg"
 
@@ -42,15 +51,6 @@ def startup_configurations():
 
 startup_configurations()
 immich_server_url, api_key = startup_sidebar()
-
-def save_settings_to_db(immich_server_url, api_key, images_folder):
-    conn = sqlite3.connect('settings.db')
-    c = conn.cursor()
-    # This simple logic assumes one row of settings; adjust according to your needs
-    c.execute("DELETE FROM settings")  # Clear existing settings
-    c.execute("INSERT INTO settings VALUES (?, ?, ?)", (immich_server_url, api_key, images_folder))
-    conn.commit()
-    conn.close()
 
 def convert_heic_to_jpeg(heic_path):
     heic_image = Image.open(heic_path)
