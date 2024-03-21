@@ -4,15 +4,18 @@
 
 ![image](https://github.com/vale46n1/immich_duplicate_finder/assets/36825789/dcb00a2f-947b-4855-bc77-cd6d8dd50537)
 
-The "Immich Duplicate Finder" is an tool designed to seamlessly be integrated with the Immich API, targeting the efficient detection and management of duplicate images through hashing (and future incorporation of machine learning technologies). Leveraging hashing algorithms, this project aims to enhance storage optimization and organization within the Immich ecosystem.
+The "Immich Duplicate Finder" is an tool designed to seamlessly be integrated with the Immich API, targeting the efficient detection and management of duplicate images through hashing detection (and future incorporation of machine learning technologies). Project aims to enhance storage optimization and organization within the Immich ecosystem.
 
 ### Features:
 
-- **Highly Accurate Detection:** Utilizes state-of-the-art algorithms to identify duplicates with precision, considering various attributes like metadata, content similarity, and more.
-- **Flexible Management Options:** Offers users multiple ways to handle detected duplicates, including auto-deletion, manual review, and archival solutions.
+- **Highly Accurate Detection:** Utilizes state-of-the-art algorithms to identify duplicates with precision based on hashing values.
 - **Easy Integration:** Designed to be effortlessly integrated with existing Immich installations, ensuring a smooth user experience without disrupting the workflow.
 - **Performance Optimized:** Engineered for minimal resource consumption, ensuring fast and efficient duplicate detection even in large datasets.
 - **User-Friendly Interface:** Comes with a simple and intuitive interface, making it accessible to both technical and non-technical users, further enriched by the comparison slider for an enhanced visual interaction.
+
+### Future development:
+
+- **Auto Deletion Options:** Multiple ways to handle detected duplicates, including auto-deletion, manual review, and archival solutions.
 
 ## Getting Started
 
@@ -23,7 +26,7 @@ The "Immich Duplicate Finder" is an tool designed to seamlessly be integrated wi
 Begin by cloning this repository to your local machine. You can do this by running the following command in your terminal or command prompt:
 
 ```bash
-git clone https://github.com/yourusername/immich_duplicate_finder.git
+git clone https://github.com/vale46n1/immich_duplicate_finder.git
 ```
 
 ### Install Dependencies
@@ -47,16 +50,13 @@ This will start the Streamlit server and automatically open your web browser to 
 
 After launching the app, you'll need to complete a simple initial configuration to connect the "Immich Duplicate Finder" with your Immich server:
 
-1. **Specify Immich Server Address:** Upon first launching the app, you'll be prompted to enter the address of your Immich server. This ensures that the "Immich Duplicate Finder" can communicate with your Immich installation.
+1. **Specify Immich Server Address:** Upon first launching the app, in the sidebar, you'll be prompted to enter the address of your Immich server. This ensures that the "Immich Duplicate Finder" can communicate with your Immich installation.
 
 2. **Generate an API Key:** Next, generate an API key within your Immich app. This is a critical step for authenticating and securing communication between the "Immich Duplicate Finder" and the Immich server.
+https://immich.app/docs/features/command-line-interface#obtain-the-api-key
 
-3. **Enter the API Key into the Program:** Once you have your API key, enter it into the designated field in the "Immich Duplicate Finder" app. This links your specific Immich instance to the duplicate finder.
+4. **Enter the API Key into the Program:** Once you have your API key, enter it into the designated field in the "Immich Duplicate Finder" app. This links your specific Immich instance to the duplicate finder.
 
-4. **Data Persistence:** To streamline your experience, the server address and API key are securely saved in a database. This means you won't need to re-enter this information every time you use the app, making future interactions quicker and more seamless.
-
-### Data Security
-
-Your server address and API key are stored securely, ensuring your data remains safe and private. We prioritize your security and privacy, employing robust encryption methods to protect your information.
+5. **Data Persistence:** To streamline your experience, the server address and API key are securely saved in a database. This means you won't need to re-enter this information every time you use the app, making future interactions quicker and more seamless.
 
 Enjoy exploring and managing duplicates in your Immich ecosystem with ease! If you encounter any issues or have suggestions for improvement, feel free to open an issue or submit a pull request.
