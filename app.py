@@ -2,7 +2,7 @@ import requests
 import os
 import json
 import numpy as np
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import sqlite3
 import io
 from io import BytesIO
@@ -82,27 +82,25 @@ def get_asset_thumbnail(asset_id):
 
 @st.cache_data(show_spinner=True)
 def stream_asset(asset_id, immich_server_url):
-    # Construct the download URL for the asset
     asset_download_url = f"{immich_server_url}/api/download/asset/{asset_id}"
-    # Stream the asset
-    response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream','x-api-key': api_key}, stream=True)
+    response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream', 'x-api-key': api_key}, stream=True)
+
     if response.status_code == 200 and 'image/' in response.headers.get('Content-Type', ''):
         image_bytes = BytesIO(response.content)
         try:
             image = Image.open(image_bytes)
+            image.load()  # Force loading the image data while the file is open
+            image_bytes.close()  # Now we can safely close the stream
             return image
         except UnidentifiedImageError:
-            # Log error or save the problematic data for inspection
             print(f"Failed to identify image for asset_id {asset_id}. Content-Type: {response.headers.get('Content-Type')}")
-            # Optionally, save or log the problematic bytes
-            # with open(f"debug_{asset_id}.bin", "wb") as f_debug:
-            #     f_debug.write(response.content)
+            image_bytes.close()  # Ensure the stream is closed even if an error occurs
             return None
     else:
-        print(f"Failed to fetch image for asset_id {asset_id}. Status code: {response.status_code}, Content-Type: {response.headers.get('Content-Type')}")
+        print(f"Skipping non-image asset_id {asset_id} with Content-Type: {response.headers.get('Content-Type')}")
         return None
 
-def get_asset_info(asset_id, assets, asset_info_required):
+def get_asset_info(asset_id, assets):
     # Search for the asset in the provided list of assets.
     asset_info = next((asset for asset in assets if asset['id'] == asset_id), None)
 
@@ -112,14 +110,20 @@ def get_asset_info(asset_id, assets, asset_info_required):
             formatted_file_size = bytes_to_megabytes(asset_info['exifInfo']['fileSizeInByte'])
         except KeyError:
             formatted_file_size = "Unknown"
+        
         original_file_name = asset_info.get('originalFileName', 'Unknown')
-        resolution = "{} x {}".format(asset_info.get('exifInfo', {}).get('exifImageHeight', 'Unknown'), asset_info.get('exifInfo', {}).get('exifImageWidth', 'Unknown'))
+        resolution = "{} x {}".format(
+            asset_info.get('exifInfo', {}).get('exifImageHeight', 'Unknown'), 
+            asset_info.get('exifInfo', {}).get('exifImageWidth', 'Unknown')
+        )
         lens_model = asset_info.get('exifInfo', {}).get('lensModel', 'Unknown')
         creation_date = asset_info.get('fileCreatedAt', 'Unknown')
-
-        # Add more fields as needed
-
-        return formatted_file_size, original_file_name, resolution, lens_model, creation_date
+        is_external = asset_info.get('isExternal', False)
+        is_offline = asset_info.get('isOffline', False)
+        is_read_only = asset_info.get('isReadOnly', False)
+        
+        # Add more fields as needed and return them
+        return formatted_file_size, original_file_name, resolution, lens_model, creation_date, is_external, is_offline, is_read_only
     else:
         return None
  
@@ -128,33 +132,48 @@ def fetch_assets():
     base_url = immich_server_url
     asset_info_url = f"{base_url}/api/asset/"
     
-    with st.spinner('Fetching assets...'):
-        # Make the HTTP GET request
-        response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False)
+    try:
+        with st.spinner('Fetching assets...'):
+            # Make the HTTP GET request
+            response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False, timeout=10)
 
-        # Check for HTTP errors
-        response.raise_for_status()
+            # Check for HTTP errors
+            response.raise_for_status()
 
-        # Check the Content-Type of the response
-        content_type = response.headers.get('Content-Type', '')
-        if 'application/json' in content_type:
-            # Attempt to decode the JSON response
-            try:
-                if response.text:
-                    assets = response.json()
-                    st.success('Assets fetched successfully!')
-                    return assets
-                else:
-                    st.error('Received an empty response.')
+            # Check the Content-Type of the response
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' in content_type:
+                # Attempt to decode the JSON response
+                try:
+                    if response.text:
+                        assets = response.json()
+                        st.success('Assets fetched successfully!')
+                        return assets
+                    else:
+                        st.error('Received an empty response.')
+                        return None
+                except requests.exceptions.JSONDecodeError as e:
+                    st.error('Failed to decode JSON from the response.')
+                    st.error(f'Response content: {response.text}')
                     return None
-            except requests.exceptions.JSONDecodeError as e:
-                st.error('Failed to decode JSON from the response.')
+            else:
+                st.error(f'Unexpected Content-Type: {content_type}')
                 st.error(f'Response content: {response.text}')
                 return None
-        else:
-            st.error(f'Unexpected Content-Type: {content_type}')
-            st.error(f'Response content: {response.text}')
-            return None
+
+    except requests.exceptions.ConnectTimeout:
+        # Handle connection timeout specifically
+        st.error('Failed to connect to the server. Please check your network connection and try again.')
+
+    except requests.exceptions.HTTPError as e:
+        # Handle HTTP errors
+        st.error(f'HTTP error occurred: {e}')
+
+    except requests.exceptions.RequestException as e:
+        # Handle other requests-related errors
+        st.error(f'Error fetching assets: {e}')
+
+    return None
 
 def find_duplicates_hash(assets):
     """Find and return duplicates based on file hash."""
@@ -192,8 +211,8 @@ def show_duplicate_photos(assets,limit):
         progress_bar = st.progress(0)
         filtered_duplicates = []
         for original, duplicate in duplicates:
-            original_size_info = get_asset_info(original['id'],assets,'fileSizeInByte')
-            duplicate_size_info = get_asset_info(duplicate['id'],assets, 'fileSizeInByte')
+            original_size_info = get_asset_info(original['id'],assets)
+            duplicate_size_info = get_asset_info(duplicate['id'],assets)
 
             # Check if the size is known before attempting to convert to float
             if original_size_info[0] != 'Unknown' and duplicate_size_info[0] != 'Unknown':
@@ -219,27 +238,34 @@ def show_duplicate_photos(assets,limit):
             # Update the progress bar based on the current iteration relative to the total
             progress_bar.progress(i / len(duplicates))
             
-            original_size=get_asset_info(original['id'],assets,'fileSizeInByte')
-            duplicate_size=get_asset_info(duplicate['id'],assets,'fileSizeInByte')
+            original_size=get_asset_info(original['id'],assets)
+            duplicate_size=get_asset_info(duplicate['id'],assets)
 
             st.write(f"Duplicate Pair {i}")
             
             #ORIGINAL SIZE
-            image1 = np.array(stream_asset(original['id'],immich_server_url))
-            image2 = np.array(stream_asset(duplicate['id'],immich_server_url))
+            original_image = stream_asset(original['id'], immich_server_url)
+            duplicate_image = stream_asset(duplicate['id'], immich_server_url)
 
-            # render image-comparison
-            image_comparison(
-                img1=image1,
-                img2=image2,
-                label1=f"Name: {original_size[1]}",
-                label2=f"Name: {duplicate_size[1]}",
-                width=700,
-                starting_position=50,
-                show_labels=True,
-                make_responsive=True,
-                in_memory=True,
-            )
+            if original_image is not None and duplicate_image is not None:
+                # Convert PIL images to numpy arrays if necessary
+                image1 = np.array(original_image)
+                image2 = np.array(duplicate_image)
+                # Proceed with image comparison
+                image_comparison(
+                    img1=image1,
+                    img2=image2,
+                    label1=f"Name: {original_size[1]}",
+                    label2=f"Name: {duplicate_size[1]}",
+                    width=700,
+                    starting_position=50,
+                    show_labels=True,
+                    make_responsive=True,
+                    in_memory=True,
+                    # Your existing parameters here
+                )
+            else:
+                st.write("One or both of the assets are not images and cannot be compared.")
 
             col1, col2 = st.columns(2)
 
@@ -250,6 +276,9 @@ def show_duplicate_photos(assets,limit):
                 st.write(f"Resolution: {original_size[2]}")
                 st.write(f"Lens Model: {original_size[3]}")
                 st.write(f"Created At: {original_size[4]}")
+                st.write(f"Is External: {'Yes' if original_size[5] else 'No'}")
+                st.write(f"Is Offline: {'Yes' if original_size[6] else 'No'}")
+                st.write(f"Is Read-Only: {'Yes' if original_size[7] else 'No'}")
                
 
                 if st.button(f"Delete {i}", key=f"delete-org-{i}"):
@@ -266,6 +295,9 @@ def show_duplicate_photos(assets,limit):
                 st.write(f"Resolution: {duplicate_size[2]}")
                 st.write(f"Lens Model: {duplicate_size[3]}")
                 st.write(f"Created At: {duplicate_size[4]}")
+                st.write(f"Is External: {'Yes' if duplicate_size[5] else 'No'}")
+                st.write(f"Is Offline: {'Yes' if duplicate_size[6] else 'No'}")
+                st.write(f"Is Read-Only: {'Yes' if duplicate_size[7] else 'No'}")
 
                 if st.button(f"Delete {i}", key=f"delete-dup-{i}"):
                     if delete_asset(duplicate['id']):
@@ -280,47 +312,42 @@ def show_duplicate_photos(assets,limit):
         st.write("No duplicates found.")
 
 def main():
-    # Initialize session state variables if they don't exist, using a pattern that avoids conflicts
-    if 'enable_size_filter' not in st.session_state:
-        st.session_state['enable_size_filter'] = True
-    if 'size_ratio' not in st.session_state:
-        st.session_state['size_ratio'] = 5
-    if 'deleted_photo' not in st.session_state:
-        st.session_state['deleted_photo'] = False
-    if 'filter_nr' not in st.session_state:
-        st.session_state['filter_nr'] = 10
+    # Initialize session state variables with default values if they are not already set
+    session_defaults = {
+        'enable_size_filter': True,
+        'size_ratio': 5,
+        'deleted_photo': False,
+        'filter_nr': 10,
+        'show_duplicates': False  # Initialize with default action to not show duplicates
+    }
+    for key, default_value in session_defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
 
     #################
 
     with st.sidebar.expander("Filter Settings", expanded=True):
-        # Use session state directly for filter settings with UI elements, avoiding setting default values that conflict with session state
-        st.checkbox("Enable Size Difference Filter", value=st.session_state['enable_size_filter'], key='enable_size_filter')
-        st.number_input("Minimum Size Difference Ratio", min_value=1, value=st.session_state['size_ratio'], step=1, key='size_ratio')
-        st.number_input("Nr of photo to show", min_value=1, value=st.session_state['filter_nr'], step=1, key='filter_nr')
+        # Direct binding of session state to UI widgets
+        st.session_state['enable_size_filter'] = st.checkbox("Enable Size Difference Filter", value=st.session_state['enable_size_filter'])
+        st.session_state['size_ratio'] = st.number_input("Minimum Size Difference Ratio", min_value=1, value=st.session_state['size_ratio'], step=1)
+        st.session_state['filter_nr'] = st.number_input("Nr of photo to show", min_value=1, value=st.session_state['filter_nr'], step=1)
 
-        # Use a button to update session state for showing duplicates
+        # Button to trigger duplicates finding
         if st.button('Find Duplicates'):
             st.session_state['show_duplicates'] = True
 
-    if st.session_state.get('show_duplicates') and st.session_state['deleted_photo'] == False:
-        # Check if 'assets' is not None AND has content (i.e., it's not empty)
-        print("Fetch con cache")
-        assets = fetch_assets()
-        limit=st.session_state['filter_nr']
-        show_duplicate_photos(assets,limit) 
-    
-    if st.session_state.get('show_duplicates') and st.session_state['deleted_photo'] == True:
-        # Check if 'assets' is not None AND has content (i.e., it's not empty)
-        print("Fetch senza cache")
-        assets = fetch_assets()
-        limit=st.session_state['filter_nr']
-        show_duplicate_photos(assets,limit) 
-        show_duplicate_photos(assets,limit) 
-
-    st.sidebar.markdown("---")
+    # Only proceed to show duplicates if 'show_duplicates' flag is true
+    if st.session_state['show_duplicates']:
+        assets = fetch_assets()  # Ensure this handles errors/exceptions properly
+        limit = st.session_state['filter_nr']
+        if assets:
+            show_duplicate_photos(assets, limit)
+        else:
+            st.write("No assets found or failed to fetch assets.")
 
     # Add version and other data at the bottom
-    program_version = "v0.0.4"  # Example version
+    st.sidebar.markdown("---")
+    program_version = "v0.0.6"  # Example version
     additional_data = "Immich duplicator finder"
     st.sidebar.markdown(f"**Version:** {program_version}\n\n{additional_data}")
 
