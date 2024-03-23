@@ -8,6 +8,7 @@ import io
 from io import BytesIO
 from streamlit_image_comparison import image_comparison
 import streamlit as st
+import pandas as pd
 
 def load_settings_from_db():
     conn = sqlite3.connect('settings.db')
@@ -76,15 +77,15 @@ def validate_image(image_content):
         return False
 
 @st.cache_data(show_spinner=True)
-def get_asset_thumbnail(asset_id):
-    thumbnail = requests.request("GET", f"{immich_server_url}/api/asset/thumbnail/{asset_id}", headers={'Accept': 'application/octet-stream','x-api-key': api_key}, data={})
-    return thumbnail
-
-@st.cache_data(show_spinner=True)
-def stream_asset(asset_id, immich_server_url):
-    asset_download_url = f"{immich_server_url}/api/download/asset/{asset_id}"
-    response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream', 'x-api-key': api_key}, stream=True)
-
+def stream_asset(asset_id, immich_server_url):   
+    # Determine whether to fetch the original or thumbnail based on user selection
+    photo_choice = st.session_state['photo_choice']
+    if photo_choice == 'Thumbnail (fast)':
+        response = requests.request("GET", f"{immich_server_url}/api/asset/thumbnail/{asset_id}?format=JPEG", headers={'Accept': 'application/octet-stream','x-api-key': api_key}, data={})
+    else:
+        asset_download_url = f"{immich_server_url}/api/download/asset/{asset_id}"
+        response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream', 'x-api-key': api_key}, stream=True)
+        
     if response.status_code == 200 and 'image/' in response.headers.get('Content-Type', ''):
         image_bytes = BytesIO(response.content)
         try:
@@ -126,7 +127,8 @@ def get_asset_info(asset_id, assets):
         return formatted_file_size, original_file_name, resolution, lens_model, creation_date, is_external, is_offline, is_read_only
     else:
         return None
- 
+
+@st.cache_data(show_spinner=True) 
 def fetch_assets():
     # Remove trailing slash from immich_server_url if present
     base_url = immich_server_url
@@ -147,6 +149,7 @@ def fetch_assets():
                 try:
                     if response.text:
                         assets = response.json()
+                        assets = [asset for asset in assets if asset.get("type") == "IMAGE"]
                         st.success('Assets fetched successfully!')
                         return assets
                     else:
@@ -176,16 +179,39 @@ def fetch_assets():
     return None
 
 def find_duplicates_hash(assets):
-    """Find and return duplicates based on file hash."""
+    """Find and return duplicates based on file hash, correlating specific resolutions."""
     seen_hashes = {}
     duplicates = []
+    resolution_counts  = {}  # Track resolution correlations for the same hash
+
     for asset in assets:
+        resolution_height = asset.get('exifInfo', {}).get('exifImageHeight', 'Unknown')
+        resolution_width = asset.get('exifInfo', {}).get('exifImageWidth', 'Unknown')
+        resolution = "{} x {}".format(resolution_height, resolution_width)
+
+        # Check resolution only if avoid_thumbnail_jpeg is True and skip specific resolutions
+        if st.session_state['avoid_thumbnail_jpeg'] and (resolution == "1600 x 1200" or resolution == "1200 x 1600"):
+            continue  # Skip this asset and move to the next one
+
         file_hash = asset.get('thumbhash')
         if file_hash in seen_hashes:
+            # Add the current asset as a duplicate
             duplicates.append((seen_hashes[file_hash], asset))
+
+            # Increment count for this resolution among duplicates
+            resolution_counts[resolution] = resolution_counts.get(resolution, 0) + 1
+
+            # Also update for the resolution of the asset previously seen with this hash
+            prev_asset = seen_hashes[file_hash]
+            prev_resolution_height = prev_asset.get('exifInfo', {}).get('exifImageHeight', 'Unknown')
+            prev_resolution_width = prev_asset.get('exifInfo', {}).get('exifImageWidth', 'Unknown')
+            prev_resolution = "{} x {}".format(prev_resolution_height, prev_resolution_width)
+            resolution_counts[prev_resolution] = resolution_counts.get(prev_resolution, 0) + 1
         else:
             seen_hashes[file_hash] = asset
-    return duplicates
+
+    return duplicates, resolution_counts
+
 
 def delete_asset(asset_id):
     url = f"{immich_server_url}/api/asset"
@@ -204,10 +230,10 @@ def delete_asset(asset_id):
 
 def show_duplicate_photos(assets,limit):
      # Assuming this fetches asset information
-    duplicates = find_duplicates_hash(assets)
+    duplicates, resolution_counts = find_duplicates_hash(assets)
 
     if duplicates:
-        st.write(f"Total duplicates found (showing first {limit}) on total of : {len(find_duplicates_hash(assets))}")
+        st.write(f"Total duplicates found {len(duplicates)} on total asset of {len(assets)} -> Currently shown: {limit}")
         progress_bar = st.progress(0)
         filtered_duplicates = []
         for original, duplicate in duplicates:
@@ -270,18 +296,20 @@ def show_duplicate_photos(assets,limit):
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write(f"Photo with ID: {original['id']}")
-                st.write(f"File name: {original_size[1]}")
-                st.write(f"Size: {original_size[0]}")
-                st.write(f"Resolution: {original_size[2]}")
-                st.write(f"Lens Model: {original_size[3]}")
-                st.write(f"Created At: {original_size[4]}")
-                st.write(f"Is External: {'Yes' if original_size[5] else 'No'}")
-                st.write(f"Is Offline: {'Yes' if original_size[6] else 'No'}")
-                st.write(f"Is Read-Only: {'Yes' if original_size[7] else 'No'}")
+                details_img1 = f"""
+                - **File name:** {original_size[1]}
+                - **Photo with ID:** {original['id']}
+                - **Size:** {original_size[0]}
+                - **Resolution:** {original_size[2]}
+                - **Lens Model:** {original_size[3]}
+                - **Created At:** {original_size[4]}
+                - **Is External:** {'Yes' if original_size[5] else 'No'}
+                - **Is Offline:** {'Yes' if original_size[6] else 'No'}
+                - **Is Read-Only:** {'Yes' if original_size[7] else 'No'}
+                """
+                st.markdown(details_img1)
                
-
-                if st.button(f"Delete {i}", key=f"delete-org-{i}"):
+                if st.button(f"Delete original {i}", key=f"delete-org-{i}"):
                     if delete_asset(original['id']):
                         st.success(f"Deleted photo {i}")
                         st.session_state['deleted_photo'] = True
@@ -289,17 +317,20 @@ def show_duplicate_photos(assets,limit):
                         st.error(f"Failed to delete photo {i}")
                                         
             with col2:
-                st.write(f"Photo with ID: {duplicate['id']}")
-                st.write(f"File name: {duplicate_size[1]}")
-                st.write(f"Size: {duplicate_size[0]}")
-                st.write(f"Resolution: {duplicate_size[2]}")
-                st.write(f"Lens Model: {duplicate_size[3]}")
-                st.write(f"Created At: {duplicate_size[4]}")
-                st.write(f"Is External: {'Yes' if duplicate_size[5] else 'No'}")
-                st.write(f"Is Offline: {'Yes' if duplicate_size[6] else 'No'}")
-                st.write(f"Is Read-Only: {'Yes' if duplicate_size[7] else 'No'}")
+                details_img2 = f"""
+                - **File name:** {duplicate_size[1]}
+                - **Photo with ID:** {duplicate['id']}
+                - **Size:** {duplicate_size[0]}
+                - **Resolution:** {duplicate_size[2]}
+                - **Lens Model:** {duplicate_size[3]}
+                - **Created At:** {duplicate_size[4]}
+                - **Is External:** {'Yes' if duplicate_size[5] else 'No'}
+                - **Is Offline:** {'Yes' if duplicate_size[6] else 'No'}
+                - **Is Read-Only:** {'Yes' if duplicate_size[7] else 'No'}
+                """
+                st.markdown(details_img2, unsafe_allow_html=True)
 
-                if st.button(f"Delete {i}", key=f"delete-dup-{i}"):
+                if st.button(f"Delete duplicate {i}", key=f"delete-dup-{i}"):
                     if delete_asset(duplicate['id']):
                         st.success(f"Deleted photo {i}")
                     else:
@@ -318,7 +349,9 @@ def main():
         'size_ratio': 5,
         'deleted_photo': False,
         'filter_nr': 10,
-        'show_duplicates': False  # Initialize with default action to not show duplicates
+        'show_duplicates': False,
+        'avoid_thumbnail_jpeg': True,
+        'photo_choice': 'Thumbnail (fast)'  # Initialize with default action to not show duplicates
     }
     for key, default_value in session_defaults.items():
         if key not in st.session_state:
@@ -331,6 +364,12 @@ def main():
         st.session_state['enable_size_filter'] = st.checkbox("Enable Size Difference Filter", value=st.session_state['enable_size_filter'])
         st.session_state['size_ratio'] = st.number_input("Minimum Size Difference Ratio", min_value=1, value=st.session_state['size_ratio'], step=1)
         st.session_state['filter_nr'] = st.number_input("Nr of photo to show", min_value=1, value=st.session_state['filter_nr'], step=1)
+
+        # Adding a select box for choosing between original photo and thumbnail
+        photo_options = ['Original Photo (slow)', 'Thumbnail (fast)']
+        photo_choice = st.selectbox("Choose photo type to display", options=photo_options, index=photo_options.index(st.session_state['photo_choice']))
+        st.session_state['photo_choice'] = photo_choice
+        st.session_state['avoid_thumbnail_jpeg'] = st.checkbox("Avoid to analyze thumbnail generated by Immich (1600x1200)", value=st.session_state['avoid_thumbnail_jpeg'])
 
         # Button to trigger duplicates finding
         if st.button('Find Duplicates'):
