@@ -16,14 +16,14 @@ def load_settings_from_db():
     c.execute("SELECT * FROM settings LIMIT 1")
     settings = c.fetchone()
     conn.close()
-    return settings if settings else (None, None, None)
+    return settings if settings else (None, None, None, 10)
 
-def save_settings_to_db(immich_server_url, api_key, images_folder):
+def save_settings_to_db(immich_server_url, api_key, images_folder, timeout):
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
     # This simple logic assumes one row of settings; adjust according to your needs
     c.execute("DELETE FROM settings")  # Clear existing settings
-    c.execute("INSERT INTO settings VALUES (?, ?, ?)", (immich_server_url, api_key, images_folder))
+    c.execute("INSERT INTO settings VALUES (?, ?, ?, ?)", (immich_server_url, api_key, images_folder, timeout))
     conn.commit()
     conn.close()
 
@@ -33,26 +33,27 @@ def startup_sidebar():
     st.sidebar.image(logo_path, width=150)
     st.sidebar.markdown("---")
 
-    immich_server_url, api_key, images_folder = load_settings_from_db()
+    immich_server_url, api_key, images_folder, timeout = load_settings_from_db()
 
     with st.sidebar.expander("Login Settings", expanded=False):
         immich_server_url = st.text_input('IMMICH Server URL', immich_server_url).rstrip('/')
         api_key = st.text_input('API Key', api_key)
+        timeout = st.number_input('Request timeout', timeout)
         if st.button('Save Settings'):
-            save_settings_to_db(immich_server_url, api_key, images_folder)
+            save_settings_to_db(immich_server_url, api_key, images_folder, timeout)
             st.success('Settings saved!')
-    return immich_server_url, api_key
+    return immich_server_url, api_key, timeout
 
 def startup_configurations():
     st.set_page_config(page_title="Immich duplicator finder", page_icon="https://avatars.githubusercontent.com/u/109746326?s=48&v=4")
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS settings (immich_server_url text, api_key text, images_folder text)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS settings (immich_server_url text, api_key text, images_folder text, timeout number)''')
     conn.commit()
     conn.close()
 
 startup_configurations()
-immich_server_url, api_key = startup_sidebar()
+immich_server_url, api_key, timeout = startup_sidebar()
 
 def convert_heic_to_jpeg(heic_path):
     heic_image = Image.open(heic_path)
@@ -81,10 +82,10 @@ def stream_asset(asset_id, immich_server_url):
     # Determine whether to fetch the original or thumbnail based on user selection
     photo_choice = st.session_state['photo_choice']
     if photo_choice == 'Thumbnail (fast)':
-        response = requests.request("GET", f"{immich_server_url}/api/asset/thumbnail/{asset_id}?format=JPEG", headers={'Accept': 'application/octet-stream','x-api-key': api_key}, data={})
+        response = requests.request("GET", f"{immich_server_url}/api/asset/thumbnail/{asset_id}?format=JPEG", headers={'Accept': 'application/octet-stream','x-api-key': api_key}, data={}, timeout=timeout)
     else:
         asset_download_url = f"{immich_server_url}/api/download/asset/{asset_id}"
-        response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream', 'x-api-key': api_key}, stream=True)
+        response = requests.post(asset_download_url, headers={'Accept': 'application/octet-stream', 'x-api-key': api_key}, stream=True, timeout=timeout)
         
     if response.status_code == 200 and 'image/' in response.headers.get('Content-Type', ''):
         image_bytes = BytesIO(response.content)
@@ -137,7 +138,7 @@ def fetch_assets():
     try:
         with st.spinner('Fetching assets...'):
             # Make the HTTP GET request
-            response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False, timeout=10)
+            response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False, timeout=timeout)
 
             # Check for HTTP errors
             response.raise_for_status()
@@ -219,7 +220,7 @@ def delete_asset(asset_id):
         "force": True,
         "ids": [asset_id]
     })
-    response = requests.request("DELETE", url, headers={'Content-Type': 'application/json','x-api-key': api_key}, data=payload)
+    response = requests.request("DELETE", url, headers={'Content-Type': 'application/json','x-api-key': api_key}, data=payload, timeout=timeout)
     print(response)
     if response.status_code == 204:
         st.success(f"Successfully deleted asset with ID: {asset_id}")
