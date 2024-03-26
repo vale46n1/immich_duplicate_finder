@@ -157,6 +157,8 @@ def show_duplicate_photos(assets,limit):
                 - **Is External:** {'Yes' if original_size[5] else 'No'}
                 - **Is Offline:** {'Yes' if original_size[6] else 'No'}
                 - **Is Read-Only:** {'Yes' if original_size[7] else 'No'}
+                - **Is Trashed:** {'Yes' if original_size[8] else 'No'}
+                - **Is Favorite:** {'Yes' if original_size[9] else 'No'}
                 """
                 st.markdown(details_img1, unsafe_allow_html=True)
                
@@ -179,6 +181,8 @@ def show_duplicate_photos(assets,limit):
                 - **Is External:** {'Yes' if duplicate_size[5] else 'No'}
                 - **Is Offline:** {'Yes' if duplicate_size[6] else 'No'}
                 - **Is Read-Only:** {'Yes' if duplicate_size[7] else 'No'}
+                - **Is Trashed:** {'Yes' if duplicate_size[8] else 'No'}
+                - **Is Favorite:** {'Yes' if duplicate_size[9] else 'No'}
                 """
                 st.markdown(details_img2, unsafe_allow_html=True)
 

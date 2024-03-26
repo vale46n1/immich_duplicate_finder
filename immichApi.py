@@ -105,9 +105,10 @@ def getAssetInfo(asset_id, assets):
         is_external = asset_info.get('isExternal', False)
         is_offline = asset_info.get('isOffline', False)
         is_read_only = asset_info.get('isReadOnly', False)
-        
+        is_trashed = asset_info.get('isTrashed', False)  # Extract isTrashed
+        is_favorite = asset_info.get('isFavorite', False)        
         # Add more fields as needed and return them
-        return formatted_file_size, original_file_name, resolution, lens_model, creation_date, is_external, is_offline, is_read_only
+        return formatted_file_size, original_file_name, resolution, lens_model, creation_date, is_external, is_offline, is_read_only,is_trashed,is_favorite
     else:
         return None
     
