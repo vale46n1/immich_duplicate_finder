@@ -4,6 +4,7 @@ import json
 import numpy as np
 from streamlit_image_comparison import image_comparison
 import streamlit as st
+from datetime import datetime
 
 from immichApi import getAssetInfo, getServerStatistics, deleteAsset, fetchAssets
 from db import startup_db_configurations, startup_processed_assets_db, countProcessedAssets, getHashFromDb
@@ -55,6 +56,19 @@ def findDuplicatesHash(assets,model):
             seen_hashes[file_hash] = asset
 
     return duplicates, resolution_counts
+
+def compare_and_color_data(value1, value2):
+    # Parse the ISO 8601 formatted strings into datetime objects
+    date1 = datetime.fromisoformat(value1.rstrip('Z'))
+    date2 = datetime.fromisoformat(value2.rstrip('Z'))
+    
+    # Compare the datetime objects
+    if date1 > date2:  # value1 is newer
+        return f"<span style='color: red;'>{value1}</span>"
+    elif date1 < date2:  # value1 is older
+        return f"<span style='color: green;'>{value1}</span>"
+    else:  # They are the same
+        return f"{value1}"
 
 def compare_and_color(value1, value2):
     if value1 > value2:
@@ -139,7 +153,7 @@ def show_duplicate_photos(assets,limit):
                 - **Size:** {compare_and_color(original_size[0], duplicate_size[0])}
                 - **Resolution:** {compare_and_color(original_size[2], duplicate_size[2])}
                 - **Lens Model:** {original_size[3]}
-                - **Created At:** {compare_and_color(original_size[4], duplicate_size[4])}
+                - **Created At:** {compare_and_color_data(original_size[4], duplicate_size[4])}
                 - **Is External:** {'Yes' if original_size[5] else 'No'}
                 - **Is Offline:** {'Yes' if original_size[6] else 'No'}
                 - **Is Read-Only:** {'Yes' if original_size[7] else 'No'}
@@ -161,7 +175,7 @@ def show_duplicate_photos(assets,limit):
                 - **Size:** {compare_and_color(duplicate_size[0], original_size[0])}
                 - **Resolution:** {compare_and_color(duplicate_size[2], original_size[2])}
                 - **Lens Model:** {duplicate_size[3]}
-                - **Created At:** {compare_and_color(duplicate_size[4], original_size[4])}
+                - **Created At:** {compare_and_color_data(duplicate_size[4], original_size[4])}
                 - **Is External:** {'Yes' if duplicate_size[5] else 'No'}
                 - **Is Offline:** {'Yes' if duplicate_size[6] else 'No'}
                 - **Is Read-Only:** {'Yes' if duplicate_size[7] else 'No'}
@@ -198,13 +212,13 @@ def main():
 
     #################
 
-    with st.sidebar.expander("Utility", expanded=True):
-        stats = getServerStatistics(immich_server_url, api_key)
-        if stats is not None:
-            total_photos = stats['photos']  # Replace 'totalPhotos' with the actual key from the response
-        else:
-            total_photos = 0
-        processed_assets = countProcessedAssets()
+    #with st.sidebar.expander("Utility", expanded=True):
+    #    stats = getServerStatistics(immich_server_url, api_key)
+    #    if stats is not None:
+    #        total_photos = stats['photos']  # Replace 'totalPhotos' with the actual key from the response
+    #    else:
+    #        total_photos = 0
+    #    processed_assets = countProcessedAssets()
         #st.write(f"Assets Processed: {processed_assets} / {total_photos}")
         # Button to trigger duplicates finding
         #if st.button('Calcolate pHash for all photos'):
