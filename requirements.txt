@@ -4,3 +4,4 @@ streamlit-image-comparison==0.0.4
 numpy==1.26.4
 pillow==10.2.0
 pillow-heif
+imagehash
