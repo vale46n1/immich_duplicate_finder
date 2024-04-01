@@ -7,6 +7,11 @@ from pillow_heif import register_heif_opener
 
 @st.cache_data(show_spinner=True) 
 def fetchAssets(immich_server_url,api_key):
+    # Initialize messaging and progress
+    if 'fetch_message' not in st.session_state:
+        st.session_state['fetch_message'] = ""
+    message_placeholder = st.empty()
+
     # Remove trailing slash from immich_server_url if present
     base_url = immich_server_url
     asset_info_url = f"{base_url}/api/asset/"
@@ -26,34 +31,30 @@ def fetchAssets(immich_server_url,api_key):
                 try:
                     if response.text:
                         assets = response.json()
-                        assets = [asset for asset in assets if asset.get("type") == "IMAGE"]
-                        #st.success('Assets fetched successfully!')
-                        return assets
+                        assets = [asset for asset in assets if asset.get("type") == "IMAGE"]                       
+                        # Display the message
+                        st.session_state['fetch_message'] = 'Assets fetched successfully!'
                     else:
-                        st.error('Received an empty response.')
+                        st.session_state['fetch_message'] = 'Received an empty response.'
                         return None
                 except requests.exceptions.JSONDecodeError as e:
-                    st.error('Failed to decode JSON from the response.')
-                    st.error(f'Response content: {response.text}')
+                    st.session_state['fetch_message'] = f'Failed to decode JSON from the response.Response content: {response.text}'
                     return None
             else:
-                st.error(f'Unexpected Content-Type: {content_type}')
-                st.error(f'Response content: {response.text}')
+                st.session_state['fetch_message'] = f'Unexpected Content-Type: {content_type}\nResponse content: {response.text}'
                 return None
 
     except requests.exceptions.ConnectTimeout:
-        # Handle connection timeout specifically
-        st.error('Failed to connect to the server. Please check your network connection and try again.')
+        st.session_state['fetch_message'] = 'Failed to connect to the server. Please check your network connection and try again.'
 
     except requests.exceptions.HTTPError as e:
-        # Handle HTTP errors
-        st.error(f'HTTP error occurred: {e}')
+        st.session_state['fetch_message'] = f'HTTP error occurred: {e}'
 
     except requests.exceptions.RequestException as e:
-        # Handle other requests-related errors
-        st.error(f'Error fetching assets: {e}')
+        st.session_state['fetch_message'] = f'Error fetching assets: {e}'
 
-    return None
+    message_placeholder.text(st.session_state['fetch_message'])
+    return assets
 
 #@st.cache_data(show_spinner=True)
 def streamAsset(asset_id, immich_server_url,photo_choice,api_key):   
@@ -129,7 +130,7 @@ def deleteAsset(immich_server_url,asset_id,api_key):
         "ids": [asset_id]
     })
     response = requests.request("DELETE", url, headers={'Content-Type': 'application/json','x-api-key': api_key}, data=payload)
-    print(response)
+
     if response.status_code == 204:
         st.success(f"Successfully deleted asset with ID: {asset_id}")
         return True
