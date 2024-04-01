@@ -13,6 +13,17 @@ The "Immich Duplicate Finder" is an tool designed to seamlessly be integrated wi
 - **Performance Optimized:** Engineered for minimal resource consumption, ensuring fast and efficient duplicate detection even in large datasets.
 - **User-Friendly Interface:** Comes with a simple and intuitive interface, making it accessible to both technical and non-technical users, further enriched by the comparison slider for an enhanced visual interaction.
 
+**NOTE: The following information details significant enhancements to our project's image analysis capabilities, incorporating advanced AI technologies. Users should be aware of these updates as they may affect existing workflows and data management strategies.**
+
+Latest update of this project introduce a sophisticated image analysis enhancement powered by Facebook AI Similarity Search (FAISS) and deep learning feature extraction. This update significantly improves our ability to identify duplicate or similar images, streamlining asset management and enhancing data quality.
+
+### FAISS Key Features:
+- **FAISS Vector Database Generation**: Leveraging the power of FAISS, we now generate and store high-dimensional feature vectors extracted from images. This allows for efficient similarity searches and duplicate detection.
+- **Advanced Feature Extraction**: Utilizing a pretrained ResNet18 model, we extract meaningful features from images, ensuring high accuracy in identifying similarities.
+- **Euclidean Distance for Similarity Measurement**: By employing Euclidean distance measures, our system accurately finds and groups similar images, aiding in the decluttering and organization of image assets.
+- **Streamlit Integration**: For an improved user experience, we've integrated Streamlit, providing an intuitive interface for progress tracking and interactive data exploration.
+
+
 ### Future development:
 
 - **Auto Deletion Options:** Multiple ways to handle detected duplicates, including auto-deletion, manual review, and archival solutions.
