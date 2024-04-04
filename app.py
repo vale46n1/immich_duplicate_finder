@@ -14,6 +14,9 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 ###############STARTUP#####################
 
+# Set page title and favicon
+st.set_page_config(page_title="Immich duplicator finder ", page_icon="https://immich.app/img/immich-logo-stacked-dark.svg")
+
 startup_db_configurations()
 startup_processed_assets_db()
 immich_server_url, api_key, timeout = startup_sidebar()
