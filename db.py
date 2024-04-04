@@ -6,7 +6,14 @@ from collections import Counter
 def startup_db_configurations():
     conn = sqlite3.connect('settings.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS settings (immich_server_url text, api_key text, images_folder text, timeout number)''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            immich_server_url text, 
+            api_key text, 
+            images_folder text, 
+            timeout number
+        )
+    ''')
     conn.commit()
     conn.close()
 
