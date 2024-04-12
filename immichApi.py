@@ -6,52 +6,49 @@ from db import bytes_to_megabytes
 from pillow_heif import register_heif_opener
 
 @st.cache_data(show_spinner=True) 
-def fetchAssets(immich_server_url,api_key):
+def fetchAssets(immich_server_url, api_key):
     # Initialize messaging and progress
     if 'fetch_message' not in st.session_state:
         st.session_state['fetch_message'] = ""
     message_placeholder = st.empty()
 
+    # Initialize assets to None or an empty list, depending on your usage expectation
+    assets = []
+
     # Remove trailing slash from immich_server_url if present
-    base_url = immich_server_url
+    base_url = immich_server_url.rstrip('/')
     asset_info_url = f"{base_url}/api/asset/"
     
     try:
         with st.spinner('Fetching assets...'):
             # Make the HTTP GET request
             response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False, timeout=10)
-
-            # Check for HTTP errors
-            response.raise_for_status()
-
-            # Check the Content-Type of the response
+            response.raise_for_status()  # This will raise an exception for HTTP errors
+            
             content_type = response.headers.get('Content-Type', '')
             if 'application/json' in content_type:
-                # Attempt to decode the JSON response
-                try:
-                    if response.text:
-                        assets = response.json()
-                        assets = [asset for asset in assets if asset.get("type") == "IMAGE"]                       
-                        # Display the message
-                        st.session_state['fetch_message'] = 'Assets fetched successfully!'
-                    else:
-                        st.session_state['fetch_message'] = 'Received an empty response.'
-                        return None
-                except requests.exceptions.JSONDecodeError as e:
-                    st.session_state['fetch_message'] = f'Failed to decode JSON from the response.Response content: {response.text}'
-                    return None
+                if response.text:
+                    assets = response.json()  # Decode JSON response into a list of assets
+                    assets = [asset for asset in assets if asset.get("type") == "IMAGE"]                       
+                    st.session_state['fetch_message'] = 'Assets fetched successfully!'
+                else:
+                    st.session_state['fetch_message'] = 'Received an empty response.'
+                    assets = []  # Set assets to empty list if response is empty
             else:
                 st.session_state['fetch_message'] = f'Unexpected Content-Type: {content_type}\nResponse content: {response.text}'
-                return None
+                assets = []  # Set assets to empty list if unexpected content type
 
     except requests.exceptions.ConnectTimeout:
         st.session_state['fetch_message'] = 'Failed to connect to the server. Please check your network connection and try again.'
+        assets = []  # Set assets to empty list on connection timeout
 
     except requests.exceptions.HTTPError as e:
         st.session_state['fetch_message'] = f'HTTP error occurred: {e}'
+        assets = []  # Set assets to empty list on HTTP error
 
     except requests.exceptions.RequestException as e:
         st.session_state['fetch_message'] = f'Error fetching assets: {e}'
+        assets = []  # Set assets to empty list on other request errors
 
     message_placeholder.text(st.session_state['fetch_message'])
     return assets
