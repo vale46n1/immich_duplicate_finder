@@ -116,76 +116,43 @@ def show_duplicate_photos(assets,limit):
     else:
         st.write("No duplicates found.")
 
-def show_duplicate_photos_faiss(assets,limit,threshold):
-    # Load the index and metadata
+def show_duplicate_photos_faiss(assets, limit, threshold):
     index, metadata = init_or_load_faiss_index()
     if not index or not metadata:
         st.write("FAISS index or metadata not available.")
         return
-    # Assuming find_duplicates is implemented and returns a list of (asset_id, asset_id) pairs for duplicates
-    duplicates = find_faiss_duplicates(index, metadata, threshold)  # Adjust threshold as needed
+    duplicates = find_faiss_duplicates(index, metadata, threshold)
     
     if duplicates:
         st.write(f"Found {len(duplicates)} duplicate pairs with FAISS code:")
         progress_bar = st.progress(0)
         num_duplicates_to_show = min(len(duplicates), limit)
         
-        for i, dup_pair in enumerate(duplicates[:limit]):  # Only show up to 'limit' duplicates
-            
-            # Update progress
+        for i, dup_pair in enumerate(duplicates[:limit]):
             progress = (i + 1) / num_duplicates_to_show
             progress_bar.progress(progress)
 
             asset_id_1, asset_id_2 = dup_pair
-
-            #######DATA#########
-            image1 = streamAsset(asset_id_1,immich_server_url,'Thumbnail (fast)',api_key)
-            image2 = streamAsset(asset_id_2,immich_server_url,'Thumbnail (fast)',api_key)
-            asset1_info=getAssetInfo(asset_id_1,assets)
-            asset2_info=getAssetInfo(asset_id_2,assets)
+            image1 = streamAsset(asset_id_1, immich_server_url, 'Thumbnail (fast)', api_key)
+            image2 = streamAsset(asset_id_2, immich_server_url, 'Thumbnail (fast)', api_key)
+            asset1_info = getAssetInfo(asset_id_1, assets)
+            asset2_info = getAssetInfo(asset_id_2, assets)
 
             if image1 is not None and image2 is not None:
-                # Convert PIL images to numpy arrays if necessary
                 image1_np = np.array(image1)
                 image2_np = np.array(image2)
-                # Proceed with image comparison
-                image_comparison(
-                    img1=image1_np,
-                    img2=image2_np,
-                    label1=f"Name: {asset_id_1}",
-                    label2=f"Name: {asset_id_2}",
-                    width=700,
-                    starting_position=50,
-                    show_labels=True,
-                    make_responsive=True,
-                    in_memory=True,
-                    # Your existing parameters here
-                )
-            else:
-                st.write("One or both of the assets are not images and cannot be compared.")
+                image_comparison(img1=image1_np, img2=image2_np, label1=f"Name: {asset_id_1}", label2=f"Name: {asset_id_2}")
 
             col1, col2 = st.columns(2)
 
-            with col1:
-                display_asset_column(
-                    col1, 
-                    asset1_info, 
-                    asset2_info, 
-                    asset_id_1, 
-                    immich_server_url, 
-                    api_key
-                )
-                                        
-            with col2:
-                display_asset_column(
-                    col2, 
-                    asset2_info, 
-                    asset1_info,
-                    asset_id_2, 
-                    immich_server_url, 
-                    api_key
-                )
-
+            if asset1_info and asset2_info:
+                with col1:
+                    display_asset_column(col1, asset1_info, asset2_info, asset_id_1, immich_server_url, api_key)
+                with col2:
+                    display_asset_column(col2, asset2_info, asset1_info, asset_id_2, immich_server_url, api_key)
+            else:
+                st.write(f"Missing information for one or both assets: {asset_id_1}, {asset_id_2}")
+            
             st.markdown("---")
         progress_bar.progress(100)
     else:
