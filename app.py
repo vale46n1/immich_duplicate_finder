@@ -117,18 +117,33 @@ def show_duplicate_photos(assets,limit):
         st.write("No duplicates found.")
 
 def show_duplicate_photos_faiss(assets, limit, threshold):
+    st.write("Database initialization")
     index, metadata = init_or_load_faiss_index()
     if not index or not metadata:
         st.write("FAISS index or metadata not available.")
         return
+
+    # Set up stop mechanism
+    if 'stop_requested' not in st.session_state:
+        st.session_state['stop_requested'] = False
+    if st.button('Stop Find Duplicate'):
+        st.session_state['stop_requested'] = True
+
+    # Find duplicates using the FAISS index
     duplicates = find_faiss_duplicates(index, metadata, threshold)
     
     if duplicates:
         st.write(f"Found {len(duplicates)} duplicate pairs with FAISS code:")
         progress_bar = st.progress(0)
         num_duplicates_to_show = min(len(duplicates), limit)
-        
+
         for i, dup_pair in enumerate(duplicates[:limit]):
+            # Check if stop was requested
+            if st.session_state['stop_requested']:
+                st.write("Processing was stopped by the user.")
+                st.session_state['stop_requested'] = False  # Reset the flag for future operations
+                break  # Exit the loop
+
             progress = (i + 1) / num_duplicates_to_show
             progress_bar.progress(progress)
 
@@ -144,7 +159,6 @@ def show_duplicate_photos_faiss(assets, limit, threshold):
                 image_comparison(img1=image1_np, img2=image2_np, label1=f"Name: {asset_id_1}", label2=f"Name: {asset_id_2}")
 
             col1, col2 = st.columns(2)
-
             if asset1_info and asset2_info:
                 with col1:
                     display_asset_column(col1, asset1_info, asset2_info, asset_id_1, immich_server_url, api_key)
@@ -152,101 +166,85 @@ def show_duplicate_photos_faiss(assets, limit, threshold):
                     display_asset_column(col2, asset2_info, asset1_info, asset_id_2, immich_server_url, api_key)
             else:
                 st.write(f"Missing information for one or both assets: {asset_id_1}, {asset_id_2}")
-            
+
             st.markdown("---")
         progress_bar.progress(100)
     else:
         st.write("No duplicates found.")
 
-def main():   
-    assets = None
-    # Initialize session state variables with default values if they are not already set
+def setup_session_state():
+    """Initialize session state with default values."""
     session_defaults = {
         'enable_size_filter': True,
         'size_ratio': 5,
         'deleted_photo': False,
         'filter_nr': 10,
         'show_duplicates': False,
-        'calcolate_phash': False,
-        ##########FAISS###############
-        'calcolate_faiss': False,
+        'calculate_phash': False,
+        'calculate_faiss': False,
         'show_faiss_duplicate': False,
         'faiss_threshold': 0.6,
-        ###########################
         'avoid_thumbnail_jpeg': True,
         'is_trashed': False,
         'is_favorite': True,
+        'stop_process' : False,
+        'stop_index' : False,
         'photo_choice': 'Thumbnail (fast)'  # Initialize with default action to not show duplicates
     }
     for key, default_value in session_defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
 
-    #################
-    with st.sidebar.expander("Experimental", expanded=True):
-        #FAISS INDEX
-        if st.button('Generate/Update FAISS index'):
-            st.session_state['calcolate_faiss'] = True
+def configure_sidebar():
+    """Configure the sidebar for user inputs."""
+    with st.sidebar:
+        st.markdown("---")
+        with st.expander("Experimental", expanded=True):
+            if st.button('Generate/Update FAISS index'):
+                st.session_state['calculate_faiss'] = True
+            st.session_state['faiss_threshold'] = st.number_input("Faiss threshold", min_value=0.1, value=st.session_state['faiss_threshold'], step=0.1)
+            if st.button('Find photos duplicate'):
+                st.session_state['show_faiss_duplicate'] = True
 
-        st.session_state['faiss_threshold'] = st.number_input("Faiss threshold", min_value=0.1, value=st.session_state['faiss_threshold'], step=0.1)
-        if st.button('Find photos duplicate'):
-            st.session_state['show_faiss_duplicate'] = True
+        with st.expander("Filter Settings", expanded=True):
+            st.session_state['enable_size_filter'] = st.checkbox("Enable Size Difference Filter", value=st.session_state['enable_size_filter'])
+            st.session_state['size_ratio'] = st.number_input("Minimum Size Difference Ratio", min_value=1, value=st.session_state['size_ratio'], step=1)
+            st.session_state['filter_nr'] = st.number_input("Nr of photo to show", min_value=1, value=st.session_state['filter_nr'], step=1)
+            photo_options = ['Original Photo (slow)', 'Thumbnail (fast)']
+            st.session_state['photo_choice'] = st.selectbox("Choose photo type to display", options=photo_options, index=photo_options.index(st.session_state['photo_choice']))
+            st.session_state['is_trashed'] = st.checkbox("Include trashed items", value=st.session_state['is_trashed'])
 
-    with st.sidebar.expander("Filter Settings", expanded=True):
-        # Direct binding of session state to UI widgets
-        st.session_state['enable_size_filter'] = st.checkbox("Enable Size Difference Filter", value=st.session_state['enable_size_filter'])
-        st.session_state['size_ratio'] = st.number_input("Minimum Size Difference Ratio", min_value=1, value=st.session_state['size_ratio'], step=1)
-        st.session_state['filter_nr'] = st.number_input("Nr of photo to show", min_value=1, value=st.session_state['filter_nr'], step=1)
+        program_version = "v0.0.8"  # Example version
+        additional_data = "Immich duplicator finder"
+        st.markdown(f"**Version:** {program_version}\n\n{additional_data}")
 
-        # Adding a select box for choosing between original photo and thumbnail
-        photo_options = ['Original Photo (slow)', 'Thumbnail (fast)']
-        photo_choice = st.selectbox("Choose photo type to display", options=photo_options, index=photo_options.index(st.session_state['photo_choice']))
-        st.session_state['photo_choice'] = photo_choice
-        #st.session_state['avoid_thumbnail_jpeg'] = st.checkbox("Avoid to analyze thumbnail generated by Immich (1600x1200)", value=st.session_state['avoid_thumbnail_jpeg'])
-        st.session_state['is_trashed'] = st.checkbox("Include trashed items", value=st.session_state['is_trashed'])
-        #st.session_state['is_favorite'] = st.checkbox("Filter favorite elements", value=st.session_state['is_favorite'])
-        # Button to trigger duplicates finding
-        if st.button('Find Duplicates'):
-            st.session_state['show_duplicates'] = True
+def main():
+    setup_session_state()
+    configure_sidebar()
+    assets = None
 
-    # Only proceed to show duplicates if 'show_duplicates' flag is true
-    if st.session_state['show_duplicates']:
-        assets = fetchAssets(immich_server_url,api_key)  # Ensure this handles errors/exceptions properly
-        limit = st.session_state['filter_nr']
-        if assets:
-            show_duplicate_photos(assets, limit)
-        else:
-            st.write("No assets found or failed to fetch assets.")
+    # Attempt to fetch assets if any asset-related operation is to be performed
+    if st.session_state['show_duplicates'] or st.session_state['calculate_phash'] or st.session_state['show_faiss_duplicate'] or st.session_state['calculate_faiss']:
+        assets = fetchAssets(immich_server_url, api_key)
+        if not assets:
+            st.error("No assets found or failed to fetch assets.")
+            return  # Stop further execution since there are no assets to process
 
-    if st.session_state['calcolate_phash']:
-        if assets is None: 
-            assets = fetchAssets(immich_server_url,api_key) # Ensure this handles errors/exceptions properly
-        if assets:
-            calculatepHashPhotos(assets, immich_server_url, api_key)
-        else:
-            st.write("No assets found or failed to fetch assets.")
+    # Show duplicate photos if the corresponding flag is set
+    if st.session_state['show_duplicates'] and assets:
+        show_duplicate_photos(assets, st.session_state['filter_nr'])
 
-    if st.session_state['calcolate_faiss']:
-        
-        assets = fetchAssets(immich_server_url,api_key)  # Ensure this handles errors/exceptions properly
-        if assets:
-            calculateFaissIndex(assets, immich_server_url, api_key)
-        else:
-            st.write("No assets found or failed to fetch assets.")
-    
-    if st.session_state['show_faiss_duplicate']:
-        
-        print(st.session_state['faiss_threshold'])
-        if assets is None: 
-            print(f"Fetch Assets")
-            assets = fetchAssets(immich_server_url,api_key)
-        show_duplicate_photos_faiss(assets,50,st.session_state['faiss_threshold']) #Limit / threshold
+    # Calculate perceptual hash if the corresponding flag is set
+    if st.session_state['calculate_phash'] and assets:
+        calculatepHashPhotos(assets, immich_server_url, api_key)
 
-    # Add version and other data at the bottom
-    st.sidebar.markdown("---")
-    program_version = "v0.0.8"  # Example version
-    additional_data = "Immich duplicator finder"
-    st.sidebar.markdown(f"**Version:** {program_version}\n\n{additional_data}")
+    # Calculate the FAISS index if the corresponding flag is set
+    if st.session_state['calculate_faiss'] and assets:
+        calculateFaissIndex(assets, immich_server_url, api_key)
+
+    # Show FAISS duplicate photos if the corresponding flag is set
+    if st.session_state['show_faiss_duplicate'] and assets:
+        show_duplicate_photos_faiss(assets, 50, st.session_state['faiss_threshold'])
 
 if __name__ == "__main__":
     main()
