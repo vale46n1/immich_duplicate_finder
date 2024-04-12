@@ -8,12 +8,14 @@ The "Immich Duplicate Finder" is an tool designed to seamlessly be integrated wi
 
 ### Features:
 
-- **Highly Accurate Detection:** Utilizes state-of-the-art algorithms to identify duplicates with precision based on hashing values and FAISS Vector Database.
+- **Highly Accurate Detection:** Utilizes state-of-the-art algorithms to identify duplicates with precision based on hashing values and FAISS Vector Database using ResNet152.
 - **Easy Integration:** Designed to be effortlessly integrated with existing Immich installations, ensuring a smooth user experience without disrupting the workflow.
 - **Performance Optimized:** Engineered for minimal resource consumption, ensuring fast and efficient duplicate detection even in large datasets.
 - **User-Friendly Interface:** Comes with a simple and intuitive interface, making it accessible to both technical and non-technical users, further enriched by the comparison slider for an enhanced visual interaction.
 
 ### FAISS Key Features:
+- **Better Picture Understanding:** ResNet152 helps us see and understand tiny details in pictures, making our tool smarter at finding similarities and differences.
+- **Find Similar Photos Easier:** It's now easier for us to spot photos that look alike. This is great for organizing photos or finding duplicates.
 - **FAISS Vector Database Generation**: Leveraging the power of FAISS, we now generate and store high-dimensional feature vectors extracted from images. This allows for efficient similarity searches and duplicate detection.
 - **Advanced Feature Extraction**: Utilizing a pretrained ResNet18 model, we extract meaningful features from images, ensuring high accuracy in identifying similarities.
 - **Euclidean Distance for Similarity Measurement**: By employing Euclidean distance measures, our system accurately finds and groups similar images, aiding in the decluttering and organization of image assets.
