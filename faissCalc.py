@@ -6,6 +6,8 @@ from PIL import Image
 from torchvision.models import resnet18, ResNet18_Weights
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import streamlit as st
+import multiprocessing
+from multiprocessing import Pool
 
 # Set the environment variable to allow multiple OpenMP libraries
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -24,24 +26,25 @@ index_path = 'faiss_index.bin'
 metadata_path = 'metadata.npy'
 
 def extract_features(image):
-    """Extract features from an image."""
+    """Extract features from an image using a pretrained model."""
     image_tensor = transform(image).unsqueeze(0)  # Add batch dimension
     with torch.no_grad():
         features = model(image_tensor)
     return features.numpy().flatten()
 
-# This function is adjusted to ensure that the FAISS index is always correctly initialized
+def parallel_feature_extraction(images):
+    """Extract features in parallel from a list of images."""
+    with Pool(processes=multiprocessing.cpu_count()) as pool:
+        features_list = pool.map(extract_features, images)
+    return features_list
+
 def init_or_load_faiss_index():
-    """Initialize or load the FAISS index and metadata."""
+    """Initialize or load the FAISS index and metadata, ensuring index is ready for use."""
     if os.path.exists(index_path) and os.path.exists(metadata_path):
-        # Load the index
         index = faiss.read_index(index_path)
-        # Load metadata
         metadata = np.load(metadata_path, allow_pickle=True).tolist()
     else:
-        # If the index and metadata do not exist, initialize them after extracting features from the first image
-        # to determine the correct dimension. This part is handled in the update_faiss_index function.
-        index = None  # Placeholder, will be initialized later
+        index = faiss.IndexFlatL2(512)  # Assuming a feature dimension of 512
         metadata = []
     return index, metadata
 
@@ -73,79 +76,36 @@ def update_faiss_index(image, asset_id):
     save_faiss_index_and_metadata(index, existing_metadata)
     return 'processed'
 
-################################SEARCH########################################
-def load_index_and_metadata(index_path, metadata_path):
-    if not os.path.exists(index_path) or not os.path.exists(metadata_path):
-        print("Index or metadata file does not exist.")
-        return None, []
-    
-    index = faiss.read_index(index_path)
-    metadata = np.load(metadata_path, allow_pickle=True).tolist()
-    return index, metadata
-
 def find_faiss_duplicates(index, metadata, threshold):
+    """Find duplicates in the index based on the specified similarity threshold."""
     num_vectors = index.ntotal
     duplicate_pairs = set()
 
-    # Initialize a placeholder for progress messages
     message_placeholder = st.empty()
-    # Initialize the progress bar
     progress_bar = st.progress(0)
-
+    
     for i in range(num_vectors):
-        # Update the message placeholder and progress bar
+        # Check if stop has been requested
+        if st.session_state['stop_requested']:
+            message_placeholder.text("Processing was stopped by the user.")
+            progress_bar.empty()
+            st.session_state['stop_requested'] = False  # Reset the flag for future operations
+            return None  # Or an appropriate response indicating stopping
+
         progress = int((i + 1) / num_vectors * 100)
-        message_placeholder.text(f"Finding duplicate: processing vector {i+1} of {num_vectors}")
+        message_placeholder.text(f"Finding duplicate with threshold {threshold}: processing vector {i+1} of {num_vectors}")
         progress_bar.progress(progress / 100)
 
-        # Reconstruct the i-th vector from the index
         query_vector = np.array([index.reconstruct(i)])
-        
-        # Query this vector against the index
         distances, indices = index.search(query_vector, 2)  # Searching for top 2 to include the vector itself
-        
-        # Check distances to find duplicates
-        for j in range(1, indices.shape[1]):  # Start from 1 to skip the vector itself
+
+        for j in range(1, indices.shape[1]):  # Ignore the first match as it's the vector itself
             if distances[0][j] < threshold:
                 idx1, idx2 = i, indices[0][j]
-                if idx1 != idx2:  # Ensure we're not comparing the vector to itself
-                    pair = (min(idx1, idx2), max(idx1, idx2))
-                    duplicate_pairs.add(pair)
+                if idx1 != idx2:
+                    duplicate_pairs.add((min(idx1, idx2), max(idx1, idx2)))
 
-    # Update the message to indicate completion
     message_placeholder.text(f"Finished processing {num_vectors} vectors.")
-    progress_bar.empty() 
+    progress_bar.empty()
 
-    # Convert index pairs to asset_id pairs
-    duplicate_asset_ids = [(metadata[pair[0]], metadata[pair[1]]) for pair in duplicate_pairs if pair[0] != pair[1]]
-    
-    return duplicate_asset_ids
-
-##############TEST
-def process_images_and_find_duplicates():
-    # Initialize or load the FAISS index and metadata
-    index, metadata = init_or_load_faiss_index()
-
-    # List of images to process
-    image_files = ['D:\PROGETTI_VARI\Immich\Temp\image1.jpg', 'D:\PROGETTI_VARI\Immich\Temp\image2.jpg']
-    asset_ids = ['image1', 'image2']  # Example asset IDs, typically these would be unique identifiers
-
-    # Process each image
-    for image_file, asset_id in zip(image_files, asset_ids):
-        image = Image.open(image_file)
-        status = update_faiss_index(image, asset_id)
-        print(f"Processing {asset_id}: {status}")
-
-    # Save the updated index and metadata
-    save_faiss_index_and_metadata(index, metadata)
-
-    # Attempt to find duplicates within the processed images
-    threshold = 0.6  # Define a similarity threshold for considering images as duplicates
-    duplicates = find_faiss_duplicates(index, metadata, threshold)
-    print("Duplicate pairs found:")
-    for dup_pair in duplicates:
-        print(dup_pair)
-
-# Ensure this is the main entry point to avoid running unintentionally
-if __name__ == "__main__":
-    process_images_and_find_duplicates()
+    return [(metadata[pair[0]], metadata[pair[1]]) for pair in duplicate_pairs]
