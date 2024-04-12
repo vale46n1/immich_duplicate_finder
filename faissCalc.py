@@ -3,7 +3,8 @@ import numpy as np
 import faiss
 import os
 from PIL import Image
-from torchvision.models import resnet18, ResNet18_Weights
+#from torchvision.models import resnet18, ResNet18_Weights,resnet50, ResNet50_Weights, 
+from torchvision.models import resnet152, ResNet152_Weights
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import streamlit as st
 import multiprocessing
@@ -13,13 +14,23 @@ from multiprocessing import Pool
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # Initialize the model for feature extraction Euclidean distance
-model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+#model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+#model.eval()  # Set model to evaluation mode
+#transform = Compose([Resize((224, 224)),ToTensor(),Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
+
+#model = resnet50(weights=ResNet50_Weights.DEFAULT)
+#model.eval()  # Set model to evaluation mode
+#transform = Compose([Resize((448, 448)), ToTensor(),Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
+
+# Load ResNet152 with pretrained weights
+model = resnet152(weights=ResNet152_Weights.DEFAULT)
 model.eval()  # Set model to evaluation mode
 transform = Compose([
-    Resize((224, 224)),
+    Resize((224, 224)),  # Standard size for ImageNet-trained models
     ToTensor(),
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
+
 
 # Global variables for paths
 index_path = 'faiss_index.bin'
@@ -32,19 +43,13 @@ def extract_features(image):
         features = model(image_tensor)
     return features.numpy().flatten()
 
-def parallel_feature_extraction(images):
-    """Extract features in parallel from a list of images."""
-    with Pool(processes=multiprocessing.cpu_count()) as pool:
-        features_list = pool.map(extract_features, images)
-    return features_list
-
 def init_or_load_faiss_index():
     """Initialize or load the FAISS index and metadata, ensuring index is ready for use."""
     if os.path.exists(index_path) and os.path.exists(metadata_path):
         index = faiss.read_index(index_path)
         metadata = np.load(metadata_path, allow_pickle=True).tolist()
     else:
-        index = faiss.IndexFlatL2(512)  # Assuming a feature dimension of 512
+        index = None
         metadata = []
     return index, metadata
 
