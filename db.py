@@ -14,6 +14,17 @@ def startup_db_configurations():
             timeout number
         )
     ''')
+
+    # Check if the table is empty
+    c.execute('SELECT COUNT(*) FROM settings')
+    if c.fetchone()[0] == 0:
+        # Insert default settings, setting timeout to 1500 ms
+        c.execute('''
+            INSERT INTO settings (immich_server_url, api_key, images_folder, timeout)
+            VALUES (?, ?, ?, ?)
+        ''', ('', '', '', 2000))
+    
+    # Commit changes and close the connection
     conn.commit()
     conn.close()
 
