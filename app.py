@@ -131,6 +131,7 @@ def generate_db_duplicate():
     # Button to request stopping
     if st.button('Stop Finding Duplicates'):
         st.session_state['stop_requested'] = True
+        st.session_state['generate_db_duplicate'] = False
 
     num_vectors = index.ntotal
     message_placeholder = st.empty()
@@ -181,6 +182,7 @@ def show_duplicate_photos_faiss(assets, limit, min_threshold, max_threshold):
             if st.session_state.get('stop_requested', False):
                 st.write("Processing was stopped by the user.")
                 st.session_state['stop_requested'] = False  # Reset the flag for future operations
+                st.session_state['generate_db_duplicate'] = False
                 break  # Exit the loop
 
             progress = (i + 1) / num_duplicates_to_show
@@ -241,6 +243,7 @@ def configure_sidebar():
             # Button to generate/update the FAISS index
             if st.button('Create/Update FAISS index'):
                 st.session_state['calculate_faiss'] = True
+                
 
             # Button to trigger the generation of the duplicates database
             if st.button('Create/Update duplicate DB'):
@@ -261,8 +264,14 @@ def configure_sidebar():
                 help="Set the upper limit of the FAISS similarity threshold for considering duplicates."
             )
 
+            # Input for setting the maximum FAISS threshold
+            st.session_state['limit'] = st.number_input(
+                "Number of Pairs to Display",
+                value=st.session_state.get('limit', 50), step=1,
+                help="Set the number of pairs to display for the comparison"
+            )
+
             if st.button('Find photos duplicate'):
-                    st.session_state['generate_db_duplicate'] = False
                     st.session_state['show_faiss_duplicate'] = True
 
         with st.expander("Filter Settings", expanded=True):
@@ -326,12 +335,12 @@ def main():
         calculateFaissIndex(assets, immich_server_url, api_key)
 
     # Show FAISS duplicate photos if the corresponding flag is set
-    if st.session_state['generate_db_duplicate'] and assets:
+    if st.session_state['generate_db_duplicate']:
         generate_db_duplicate()
 
     # Show FAISS duplicate photos if the corresponding flag is set
     if st.session_state['show_faiss_duplicate'] and assets:
-        show_duplicate_photos_faiss(assets, 50, st.session_state['faiss_min_threshold'],st.session_state['faiss_max_threshold'])
+        show_duplicate_photos_faiss(assets, st.session_state['limit'], st.session_state['faiss_min_threshold'],st.session_state['faiss_max_threshold'])
 
 if __name__ == "__main__":
     main()
