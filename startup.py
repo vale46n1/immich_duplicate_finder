@@ -28,6 +28,3 @@ def startup_sidebar():
 
     return immich_server_url, api_key, timeout
 
-#48AkBCODdK41F7zWeVSKgcSskbeMpywSFbalPR3idVQ
-#http://192.168.1.100:8090
-

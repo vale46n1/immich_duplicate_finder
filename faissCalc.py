@@ -2,28 +2,11 @@ import torch
 import numpy as np
 import faiss
 import os
-from PIL import Image
-#from torchvision.models import resnet18, ResNet18_Weights,resnet50, ResNet50_Weights, 
 from torchvision.models import resnet152, ResNet152_Weights
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
-import streamlit as st
-import multiprocessing
-from multiprocessing import Pool
-import streamlit as st
-
-
 
 # Set the environment variable to allow multiple OpenMP libraries
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-# Initialize the model for feature extraction Euclidean distance
-#model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-#model.eval()  # Set model to evaluation mode
-#transform = Compose([Resize((224, 224)),ToTensor(),Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
-
-#model = resnet50(weights=ResNet50_Weights.DEFAULT)
-#model.eval()  # Set model to evaluation mode
-#transform = Compose([Resize((448, 448)), ToTensor(),Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),])
 
 # Load ResNet152 with pretrained weights
 model = resnet152(weights=ResNet152_Weights.DEFAULT)
@@ -33,7 +16,6 @@ transform = Compose([
     ToTensor(),
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
-
 
 # Global variables for paths
 index_path = 'faiss_index.bin'
