@@ -3,7 +3,7 @@ from streamlit_image_comparison import image_comparison
 import streamlit as st
 
 from utility import display_asset_column, findDuplicatesHash
-from immichApi import getAssetInfo, getServerStatistics, deleteAsset, fetchAssets
+from immichApi import getAssetInfo, fetchAssets
 from db import startup_db_configurations, startup_processed_assets_db, load_duplicate_pairs, is_db_populated, startup_processed_duplicate_faiss_db,save_duplicate_pair
 from startup import startup_sidebar
 from imageProcessing import streamAsset,calculatepHashPhotos,calculateFaissIndex

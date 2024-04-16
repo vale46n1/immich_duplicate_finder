@@ -93,6 +93,7 @@ def calculateFaissIndex(assets, immich_server_url, api_key):
     # Check if stop was requested and reset it if button is pressed
     if stop_button:
         st.session_state['stop_index'] = True
+        st.session_state['calculate_faiss'] = False
 
     total_assets = len(assets)
     processed_assets = 0

@@ -5,7 +5,6 @@ from immichApi import deleteAsset
 from db import getHashFromDb
 
 def compare_and_color_data(value1, value2):
-    # Parse the ISO 8601 formatted strings into datetime objects
     date1 = datetime.fromisoformat(value1.rstrip('Z'))
     date2 = datetime.fromisoformat(value2.rstrip('Z'))
     
@@ -26,7 +25,6 @@ def compare_and_color(value1, value2):
         return f"{value1}"
 
 def display_asset_column(col, asset1_info, asset2_info, asset_id_1, server_url, api_key):
-    # Construct the details markdown string based on asset information
     details = f"""
     - **File name:** {asset1_info[1]}
     - **Photo with ID:** {asset_id_1}
@@ -64,10 +62,6 @@ def findDuplicatesHash(assets,model):
     for asset in assets:
         if not st.session_state.get('is_trashed', False) and asset.get('isTrashed', False):
             continue  # Skip trashed assets if include_trashed is False
-
-        # Check resolution only if avoid_thumbnail_jpeg is True and skip specific resolutions
-        #if st.session_state['avoid_thumbnail_jpeg'] and (resolution == "1600 x 1200" or resolution == "1200 x 1600"):
-        #    continue  # Skip this asset and move to the next one
 
         resolution_height = asset.get('exifInfo', {}).get('exifImageHeight', 'Unknown')
         resolution_width = asset.get('exifInfo', {}).get('exifImageWidth', 'Unknown')
