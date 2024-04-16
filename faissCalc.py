@@ -9,6 +9,9 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import streamlit as st
 import multiprocessing
 from multiprocessing import Pool
+import streamlit as st
+
+
 
 # Set the environment variable to allow multiple OpenMP libraries
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -80,37 +83,3 @@ def update_faiss_index(image, asset_id):
     
     save_faiss_index_and_metadata(index, existing_metadata)
     return 'processed'
-
-def find_faiss_duplicates(index, metadata, threshold):
-    """Find duplicates in the index based on the specified similarity threshold."""
-    num_vectors = index.ntotal
-    duplicate_pairs = set()
-
-    message_placeholder = st.empty()
-    progress_bar = st.progress(0)
-    
-    for i in range(num_vectors):
-        # Check if stop has been requested
-        if st.session_state['stop_requested']:
-            message_placeholder.text("Processing was stopped by the user.")
-            progress_bar.empty()
-            st.session_state['stop_requested'] = False  # Reset the flag for future operations
-            return None  # Or an appropriate response indicating stopping
-
-        progress = int((i + 1) / num_vectors * 100)
-        message_placeholder.text(f"Finding duplicate with threshold {threshold}: processing vector {i+1} of {num_vectors}")
-        progress_bar.progress(progress / 100)
-
-        query_vector = np.array([index.reconstruct(i)])
-        distances, indices = index.search(query_vector, 2)  # Searching for top 2 to include the vector itself
-
-        for j in range(1, indices.shape[1]):  # Ignore the first match as it's the vector itself
-            if distances[0][j] < threshold:
-                idx1, idx2 = i, indices[0][j]
-                if idx1 != idx2:
-                    duplicate_pairs.add((min(idx1, idx2), max(idx1, idx2)))
-
-    message_placeholder.text(f"Finished processing {num_vectors} vectors.")
-    progress_bar.empty()
-
-    return [(metadata[pair[0]], metadata[pair[1]]) for pair in duplicate_pairs]

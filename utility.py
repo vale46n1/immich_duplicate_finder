@@ -42,16 +42,18 @@ def display_asset_column(col, asset1_info, asset2_info, asset_id_1, server_url, 
     """
     with col:
         st.markdown(details, unsafe_allow_html=True)
-        # Generate a unique key using the current datetime, for internal use only
-        current_time = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        delete_button_key = f"delete-{asset_id_1}-{current_time}"
-        delete_button_label = f"Delete {asset_id_1}"  # The label shown to the user remains simple and clean
+        delete_button_key = f"delete-{asset_id_1}"
+        delete_button_label = f"Delete {asset_id_1}"
         if st.button(delete_button_label, key=delete_button_key):
-            if deleteAsset(server_url, asset_id_1, api_key):
-                st.success(f"Deleted photo {asset_id_1}")
-                st.session_state[f'deleted_photo_{asset_id_1}'] = True
-            else:
-                st.error(f"Failed to delete photo {asset_id_1}")
+            try:
+                if deleteAsset(server_url, asset_id_1, api_key):
+                    st.success(f"Deleted photo {asset_id_1}")
+                    st.session_state[f'deleted_photo_{asset_id_1}'] = True
+                else:
+                    st.error(f"Failed to delete photo {asset_id_1}")
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
+                print(f"Failed to delete photo {asset_id_1}: {str(e)}")
 
 def findDuplicatesHash(assets,model):
     """Find and return duplicates based on file hash, correlating specific resolutions."""
