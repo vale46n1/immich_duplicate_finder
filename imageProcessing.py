@@ -110,14 +110,12 @@ def calculateFaissIndex(assets, immich_server_url, api_key):
         asset_id = asset.get('id')
         start_time = time.time()
 
-        image = streamAsset(asset_id, immich_server_url, "Thumbnail (fast)", api_key)
-        if image is not None:
-            status = update_faiss_index(image, asset_id)
-            if status == 'processed':
-                processed_assets += 1
-            elif status == 'skipped':
-                skipped_assets += 1
-        else:
+        status = update_faiss_index(immich_server_url,api_key, asset_id)
+        if status == 'processed':
+            processed_assets += 1
+        elif status == 'skipped':
+            skipped_assets += 1
+        elif status == 'error':
             error_assets += 1
 
         end_time = time.time()

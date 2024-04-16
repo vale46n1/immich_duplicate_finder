@@ -4,6 +4,7 @@ import faiss
 import os
 from torchvision.models import resnet152, ResNet152_Weights
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
+from immichApi import streamAsset
 
 # Set the environment variable to allow multiple OpenMP libraries
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -43,7 +44,8 @@ def save_faiss_index_and_metadata(index, metadata):
     faiss.write_index(index, index_path)
     np.save(metadata_path, np.array(metadata, dtype=object))
 
-def update_faiss_index(image, asset_id):
+def update_faiss_index(immich_server_url,api_key, asset_id):
+    
     """Update the FAISS index and metadata with a new image and its ID, 
     skipping if the asset_id has already been processed."""
     global index  # Assuming index is defined globally
@@ -53,7 +55,11 @@ def update_faiss_index(image, asset_id):
     if asset_id in existing_metadata:
         return 'skipped'  # Skip processing this image
 
-    features = extract_features(image)
+    image = streamAsset(asset_id, immich_server_url, "Thumbnail (fast)", api_key)
+    if image is not None:
+        features = extract_features(image)
+    else:
+        return 'error'
     
     if index is None:
         # Initialize the FAISS index with the correct dimension if it's the first time
