@@ -116,3 +116,81 @@ def countDuplicates():
     # Filter out hashes that appear only once (no duplicates)
     duplicates = {hash_: count for hash_, count in hash_counts.items() if count > 1}
     return duplicates
+
+
+####################### FAISS #############################
+def startup_processed_duplicate_faiss_db():
+    try:
+        conn = sqlite3.connect('duplicates.db')
+        cursor = conn.cursor()
+        sql = '''CREATE TABLE IF NOT EXISTS duplicates(
+           id INTEGER PRIMARY KEY,
+           vector_id1 INT,
+           vector_id2 INT,
+           similarity FLOAT
+        )'''
+        cursor.execute(sql)
+        conn.commit()
+    except Exception as e:
+        print("Error creating database/table:", e)
+    finally:
+        conn.close()
+
+def save_duplicate_pair(vector_id1, vector_id2, similarity):
+    similarity = float(similarity)
+    try:
+        conn = sqlite3.connect('duplicates.db')
+        cursor = conn.cursor()
+
+        # Check if the pair already exists in either order
+        cursor.execute("SELECT * FROM duplicates WHERE (vector_id1 = ? AND vector_id2 = ?) OR (vector_id1 = ? AND vector_id2 = ?)",
+                       (vector_id1, vector_id2, vector_id2, vector_id1))
+        if cursor.fetchone():
+            #print("Duplicate pair already exists.")
+            return
+
+        # If not, insert the new pair
+        cursor.execute("INSERT INTO duplicates (vector_id1, vector_id2, similarity) VALUES (?, ?, ?)",
+                       (vector_id1, vector_id2, similarity))
+        conn.commit()
+    except Exception as e:
+        print("Error inserting duplicate pair:", e)
+    finally:
+        conn.close()
+
+def load_duplicate_pairs(min_threshold, max_threshold):
+    """Load duplicate pairs with a similarity between the specified minimum and maximum thresholds."""
+    try:
+        conn = sqlite3.connect('duplicates.db')
+        cursor = conn.cursor()
+        # Adjust the SQL query to filter duplicates within the specified range
+        cursor.execute("""
+            SELECT vector_id1, vector_id2 FROM duplicates
+            WHERE similarity >= ? AND similarity <= ?""",
+            (min_threshold, max_threshold))
+        duplicates = cursor.fetchall()
+        if not duplicates:
+            print(f"No duplicates found within thresholds {min_threshold} and {max_threshold}")
+        return duplicates
+    except Exception as e:
+        print("Error loading duplicates:", e)
+    finally:
+        if conn:
+            conn.close()
+
+def is_db_populated():
+    """Check if the 'duplicates' table in the database has any entries."""
+    conn = None
+    try:
+        conn = sqlite3.connect('duplicates.db')
+        cursor = conn.cursor()
+        # Check if there are any rows in the table
+        cursor.execute("SELECT EXISTS(SELECT 1 FROM duplicates LIMIT 1)")
+        exists = cursor.fetchone()[0]
+        return exists == 1
+    except Exception as e:
+        print("Error checking database population:", e)
+        return False
+    finally:
+        if conn:
+            conn.close()

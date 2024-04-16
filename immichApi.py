@@ -120,17 +120,31 @@ def getServerStatistics(immich_server_url, api_key):
     except:
         return None
     
-def deleteAsset(immich_server_url,asset_id,api_key):
+def deleteAsset(immich_server_url, asset_id, api_key):
     url = f"{immich_server_url}/api/asset"
     payload = json.dumps({
         "force": True,
         "ids": [asset_id]
     })
-    response = requests.request("DELETE", url, headers={'Content-Type': 'application/json','x-api-key': api_key}, data=payload)
+    headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': api_key
+    }
 
-    if response.status_code == 204:
-        st.success(f"Successfully deleted asset with ID: {asset_id}")
-        return True
-    else:
-        st.error(f"Failed to delete asset with ID: {asset_id}. Status code: {response.status_code}")
+    try:
+        response = requests.delete(url, headers=headers, data=payload)
+        if response.status_code == 204:
+            st.success(f"Successfully deleted asset with ID: {asset_id}")
+            print(f"Successfully deleted asset with ID: {asset_id}")
+            return True
+        else:
+            # Provide more detailed error feedback
+            error_message = response.json().get('message', 'No additional error message provided.')
+            st.error(f"Failed to delete asset with ID: {asset_id}. Status code: {response.status_code}. Message: {error_message}")
+            print(f"Failed to delete asset with ID: {asset_id}. Status code: {response.status_code}. Message: {error_message}")
+            return False
+    except requests.RequestException as e:
+        # Handle request-related exceptions
+        st.error(f"Request failed: {str(e)}")
+        print(f"Request failed: {str(e)}")
         return False
