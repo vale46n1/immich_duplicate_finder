@@ -1,1 +1,9 @@
-# Placeholder
+name: immich-duplicate-finder
+services:
+  immich-duplicate-finder:
+    container_name: immich-duplicate-finder
+    hostname: immich-duplicate-finder
+    restart: unless-stopped
+    ports:
+      - 8501:8501
+    build: './Dockerfile'
