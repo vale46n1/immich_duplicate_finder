@@ -55,6 +55,10 @@ streamlit run app.py
 ```
 This will start the Streamlit server and automatically open your web browser to the app's page. Alternatively, Streamlit will provide a local URL you can visit to view the app.
 
+### Docker setup
+
+If preferred, you can run Immich Duplicate Finder using the files in the `docker/` subfolder of the repository. Download the `docker-compose.yml` and `Dockerfile`, and run `docker compose up -d`. Immich Duplicate Finder will be accessible at `localhost:8501`.
+
 ## Initial Configuration
 
 After launching the app, you'll need to complete a simple initial configuration to connect "Immich Duplicate Finder" with your Immich server:
