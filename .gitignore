@@ -1,0 +1,11 @@
+# Build cache
+__pycache__/
+
+## Ignore db files
+settings.db
+duplicates.db
+processed_assets.db
+
+## Ignore other files created on build
+metadata.npy
+faiss_index.bin
