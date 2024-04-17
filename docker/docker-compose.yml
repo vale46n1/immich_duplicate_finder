@@ -6,4 +6,5 @@ services:
     restart: unless-stopped
     ports:
       - 8501:8501
-    build: './Dockerfile'
+    build:
+      dockerfile: './Dockerfile'
