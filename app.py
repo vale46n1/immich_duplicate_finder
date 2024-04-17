@@ -317,7 +317,7 @@ def main():
 
     # Attempt to fetch assets if any asset-related operation is to be performed
     if st.session_state['show_duplicates'] or st.session_state['calculate_phash'] or st.session_state['show_faiss_duplicate'] or st.session_state['calculate_faiss']:
-        assets = fetchAssets(immich_server_url, api_key)
+        assets = fetchAssets(immich_server_url, api_key,timeout)
         if not assets:
             st.error("No assets found or failed to fetch assets.")
             return  # Stop further execution since there are no assets to process
