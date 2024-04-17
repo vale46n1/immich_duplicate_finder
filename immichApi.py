@@ -6,7 +6,7 @@ from db import bytes_to_megabytes
 from pillow_heif import register_heif_opener
 
 @st.cache_data(show_spinner=True) 
-def fetchAssets(immich_server_url, api_key):
+def fetchAssets(immich_server_url, api_key, timeout):
     # Initialize messaging and progress
     if 'fetch_message' not in st.session_state:
         st.session_state['fetch_message'] = ""
@@ -22,7 +22,7 @@ def fetchAssets(immich_server_url, api_key):
     try:
         with st.spinner('Fetching assets...'):
             # Make the HTTP GET request
-            response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False, timeout=10)
+            response = requests.get(asset_info_url, headers={'Accept': 'application/json', 'x-api-key': api_key}, verify=False, timeout=timeout)
             response.raise_for_status()  # This will raise an exception for HTTP errors
             
             content_type = response.headers.get('Content-Type', '')
