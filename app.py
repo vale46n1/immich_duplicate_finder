@@ -72,13 +72,19 @@ def configure_sidebar():
             # Input for setting the maximum FAISS threshold
             st.session_state['limit'] = st.number_input(
                 "Number of Pairs to Display",
-                value=st.session_state.get('limit', 50), step=1,
+                value=st.session_state.get('limit', 10), step=1,
                 help="Set the number of pairs to display for the comparison"
             )
 
-            if st.button('Find photos duplicate'):
-                    st.session_state['show_faiss_duplicate'] = True
+            if st.button('Find duplicate photos'):
+                st.session_state['show_faiss_duplicate'] = True
 
+        with st.expander("Video Duplicate Finder", expanded=True):
+            # Button to generate/update the FAISS index
+            if st.button('Find duplicate video'):
+                st.info("Coming function")
+
+        st.markdown("---")
         # Display program version and additional data
         program_version = "v0.1.3"
         additional_data = "Immich duplicator finder"
