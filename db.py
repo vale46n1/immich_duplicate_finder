@@ -158,6 +158,19 @@ def save_duplicate_pair(vector_id1, vector_id2, similarity):
     finally:
         conn.close()
 
+def delete_duplicate_pair(asset_id_1, asset_id_2):
+    try:
+        conn = sqlite3.connect('duplicates.db')
+        cursor = conn.cursor()
+        # Delete the specific duplicate entry involving the two asset IDs
+        cursor.execute("DELETE FROM duplicates WHERE (vector_id1 = ? AND vector_id2 = ?) OR (vector_id1 = ? AND vector_id2 = ?)", (asset_id_1, asset_id_2, asset_id_2, asset_id_1))
+        conn.commit()
+        print("Deleted asset from db")
+    except Exception as e:
+        print(f"Error deleting duplicate entries for asset pair {asset_id_1}-{asset_id_2}:", e)
+    finally:
+        conn.close()
+
 def load_duplicate_pairs(min_threshold, max_threshold):
     """Load duplicate pairs with a similarity between the specified minimum and maximum thresholds."""
     try:

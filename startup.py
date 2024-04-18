@@ -19,7 +19,7 @@ def startup_sidebar():
         timeout = st.number_input('Request timeout (ms)', timeout)
 
         # Check if the timeout is less than 200 ms and show a warning
-        if timeout < 200:
+        if timeout < 10 or 0:
             st.sidebar.warning('Warning: Timeout is set too low. It may cause request failures.')
 
         if st.button('Save Settings'):

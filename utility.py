@@ -1,7 +1,8 @@
 from datetime import datetime
 import streamlit as st
 from datetime import datetime
-from api import deleteAsset
+from api import deleteAsset, updateAsset
+from db import delete_duplicate_pair
 
 def compare_and_color_data(value1, value2):
     date1 = datetime.fromisoformat(value1.rstrip('Z'))
@@ -23,7 +24,7 @@ def compare_and_color(value1, value2):
     else:
         return f"{value1}"
 
-def display_asset_column(col, asset1_info, asset2_info, asset_id_1, server_url, api_key):
+def display_asset_column(col, asset1_info, asset2_info, asset_id_1,asset_id_2, server_url, api_key):
     details = f"""
     - **File name:** {asset1_info[1]}
     - **Photo with ID:** {asset_id_1}
@@ -46,6 +47,9 @@ def display_asset_column(col, asset1_info, asset2_info, asset_id_1, server_url, 
                 if deleteAsset(server_url, asset_id_1, api_key):
                     st.success(f"Deleted photo {asset_id_1}")
                     st.session_state[f'deleted_photo_{asset_id_1}'] = True
+                    st.session_state['show_faiss_duplicate'] = False
+                    #remove from asset db
+                    delete_duplicate_pair(asset_id_1,asset_id_2)
                 else:
                     st.error(f"Failed to delete photo {asset_id_1}")
             except Exception as e:

@@ -14,8 +14,6 @@ from api import getAssetInfo
 from db import load_duplicate_pairs, is_db_populated, save_duplicate_pair
 from streamlit_image_comparison import image_comparison
 
-
-
 # Set the environment variable to allow multiple OpenMP libraries
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -206,52 +204,55 @@ def show_duplicate_photos_faiss(assets, limit, min_threshold, max_threshold,immi
         num_duplicates_to_show = min(len(duplicates), limit)
 
         for i, dup_pair in enumerate(duplicates[:num_duplicates_to_show]):
-            # Check if stop was requested
-            if st.session_state.get('stop_requested', False):
-                st.write("Processing was stopped by the user.")
-                st.session_state['stop_requested'] = False  # Reset the flag for future operations
-                st.session_state['generate_db_duplicate'] = False
-                break  # Exit the loop
+            try:
+                # Check if stop was requested
+                if st.session_state.get('stop_requested', False):
+                    st.write("Processing was stopped by the user.")
+                    st.session_state['stop_requested'] = False  # Reset the flag for future operations
+                    st.session_state['generate_db_duplicate'] = False
+                    break  # Exit the loop
 
-            progress = (i + 1) / num_duplicates_to_show
-            progress_bar.progress(progress)
+                progress = (i + 1) / num_duplicates_to_show
+                progress_bar.progress(progress)
 
-            asset_id_1, asset_id_2 = dup_pair
-            # Assuming `streamAsset` and `getAssetInfo` are defined elsewhere in your code
-            image1 = streamAsset(asset_id_1, immich_server_url, 'Thumbnail (fast)', api_key)
-            image2 = streamAsset(asset_id_2, immich_server_url, 'Thumbnail (fast)', api_key)
-            asset1_info = getAssetInfo(asset_id_1, assets)
-            asset2_info = getAssetInfo(asset_id_2, assets)
+                asset_id_1, asset_id_2 = dup_pair
+                # Assuming `streamAsset` and `getAssetInfo` are defined elsewhere in your code
+                image1 = streamAsset(asset_id_1, immich_server_url, 'Thumbnail (fast)', api_key)
+                image2 = streamAsset(asset_id_2, immich_server_url, 'Thumbnail (fast)', api_key)
+                asset1_info = getAssetInfo(asset_id_1, assets)
+                asset2_info = getAssetInfo(asset_id_2, assets)
 
-            if image1 is not None and image2 is not None:
-                # Convert PIL images to numpy arrays if necessary
-                image1 = np.array(image1)
-                image2 = np.array(image2)
-                # Proceed with image comparison
-                image_comparison(
-                    img1=image1,
-                    img2=image2,
-                    label1=f"Name: {asset_id_1}",
-                    label2=f"Name: {asset_id_2}",
-                    width=700,
-                    starting_position=50,
-                    show_labels=True,
-                    make_responsive=True,
-                    in_memory=False,
-                )
+                if image1 is not None and image2 is not None:
+                    # Convert PIL images to numpy arrays if necessary
+                    image1 = np.array(image1)
+                    image2 = np.array(image2)
+                    # Proceed with image comparison
+                    image_comparison(
+                        img1=image1,
+                        img2=image2,
+                        label1=f"Name: {asset_id_1}",
+                        label2=f"Name: {asset_id_2}",
+                        width=700,
+                        starting_position=50,
+                        show_labels=True,
+                        make_responsive=True,
+                        in_memory=False,
+                    )
 
-                col1, col2 = st.columns(2)
-            #    with col1:
-            #        st.image(image1, caption=f"Name: {asset_id_1}")
-            #    with col2:
-            #        st.image(image2, caption=f"Name: {asset_id_2}")
-                
-                display_asset_column(col1, asset1_info, asset2_info, asset_id_1, immich_server_url, api_key)
-                display_asset_column(col2, asset2_info, asset1_info, asset_id_2, immich_server_url, api_key)
-            else:
-                st.write(f"Missing information for one or both assets: {asset_id_1}, {asset_id_2}")
+                    col1, col2 = st.columns(2)
+                #    with col1:
+                #        st.image(image1, caption=f"Name: {asset_id_1}")
+                #    with col2:
+                #        st.image(image2, caption=f"Name: {asset_id_2}")
+                    
+                    display_asset_column(col1, asset1_info, asset2_info, asset_id_1,asset_id_2, immich_server_url, api_key)
+                    display_asset_column(col2, asset2_info, asset1_info, asset_id_2,asset_id_1, immich_server_url, api_key)
+                else:
+                    st.write(f"Missing information for one or both assets: {asset_id_1}, {asset_id_2}")
 
-            st.markdown("---")
+                st.markdown("---")
+            except:
+                st.write(f"Missing information for one or both assets")
         progress_bar.progress(100)
     else:
         st.write("No duplicates found.")

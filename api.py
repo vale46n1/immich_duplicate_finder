@@ -121,6 +121,7 @@ def getServerStatistics(immich_server_url, api_key):
         return None
     
 def deleteAsset(immich_server_url, asset_id, api_key):
+    st.session_state['show_faiss_duplicate'] = False
     url = f"{immich_server_url}/api/asset"
     payload = json.dumps({
         "force": True,
@@ -145,6 +146,41 @@ def deleteAsset(immich_server_url, asset_id, api_key):
             return False
     except requests.RequestException as e:
         # Handle request-related exceptions
+        st.error(f"Request failed: {str(e)}")
+        print(f"Request failed: {str(e)}")
+        return False
+
+def updateAsset(immich_server_url, asset_id, api_key, dateTimeOriginal, description, isFavorite, latitude, longitude, isArchived):
+    url = f"{immich_server_url}/api/asset/{asset_id}"  # Ensure the URL is constructed correctly
+    
+    payload = json.dumps({
+        "dateTimeOriginal": dateTimeOriginal,
+        "description": description,
+        "isArchived": isArchived,
+        "isFavorite": isFavorite,
+        "latitude": latitude,
+        "longitude": longitude
+    })
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'x-api-key': api_key  # Authorization via API key
+    }
+
+    try:
+        response = requests.put(url, headers=headers, data=payload)
+        if response.status_code == 200:
+            response_data = response.json()
+            st.success(f"Successfully move on archive asset with ID: {asset_id}")
+            print(f"Successfully move on archive asset with ID: {asset_id}. Response: {response_data}")
+            return True
+        else:
+            error_message = response.json().get('message', 'No additional error message provided.')
+            st.error(f"Failed to move on archive asset with ID: {asset_id}. Status code: {response.status_code}. Message: {error_message}")
+            print(f"Failed to move on archive asset with ID: {asset_id}. Status code: {response.status_code}. Message: {error_message}")
+            return False
+    except requests.RequestException as e:
         st.error(f"Request failed: {str(e)}")
         print(f"Request failed: {str(e)}")
         return False

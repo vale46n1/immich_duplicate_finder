@@ -80,7 +80,7 @@ def configure_sidebar():
                     st.session_state['show_faiss_duplicate'] = True
 
         # Display program version and additional data
-        program_version = "v0.1.2"
+        program_version = "v0.1.3"
         additional_data = "Immich duplicator finder"
         st.markdown(f"**Version:** {program_version}\n\n{additional_data}")
 
