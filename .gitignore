@@ -11,5 +11,5 @@ processed_assets.db
 metadata.npy
 faiss_index.bin
 
-# Ignore all .code-workspace files
+# Ignore all .code-workspace files 
 *.code-workspace
