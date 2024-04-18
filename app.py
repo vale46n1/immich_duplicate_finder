@@ -91,13 +91,14 @@ def configure_sidebar():
         st.markdown(f"**Version:** {program_version}\n\n{additional_data}")
 
 def main():
+    #print(fetchAssets(immich_server_url, api_key,timeout, 'VIDEO'))
     setup_session_state()
     configure_sidebar()
     assets = None
 
     # Attempt to fetch assets if any asset-related operation is to be performed
     if st.session_state['calculate_faiss'] or st.session_state['generate_db_duplicate'] or st.session_state['show_faiss_duplicate']:
-        assets = fetchAssets(immich_server_url, api_key,timeout)
+        assets = fetchAssets(immich_server_url, api_key,timeout, 'IMAGE')
         if not assets:
             st.error("No assets found or failed to fetch assets.")
             return  # Stop further execution since there are no assets to process

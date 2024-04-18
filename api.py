@@ -4,9 +4,10 @@ from PIL import Image, UnidentifiedImageError, ImageFile
 from io import BytesIO
 from db import bytes_to_megabytes
 from pillow_heif import register_heif_opener
+import os
 
 @st.cache_data(show_spinner=True) 
-def fetchAssets(immich_server_url, api_key, timeout):
+def fetchAssets(immich_server_url, api_key, timeout, type):
     # Initialize messaging and progress
     if 'fetch_message' not in st.session_state:
         st.session_state['fetch_message'] = ""
@@ -29,7 +30,7 @@ def fetchAssets(immich_server_url, api_key, timeout):
             if 'application/json' in content_type:
                 if response.text:
                     assets = response.json()  # Decode JSON response into a list of assets
-                    assets = [asset for asset in assets if asset.get("type") == "IMAGE"]                       
+                    assets = [asset for asset in assets if asset.get("type") == type]                       
                     st.session_state['fetch_message'] = 'Assets fetched successfully!'
                 else:
                     st.session_state['fetch_message'] = 'Received an empty response.'
@@ -53,8 +54,7 @@ def fetchAssets(immich_server_url, api_key, timeout):
     message_placeholder.text(st.session_state['fetch_message'])
     return assets
 
-#@st.cache_data(show_spinner=True)
-def streamAsset(asset_id, immich_server_url,photo_choice,api_key):   
+def getImage(asset_id, immich_server_url,photo_choice,api_key):   
     # Determine whether to fetch the original or thumbnail based on user selection
     register_heif_opener()
     ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -184,3 +184,24 @@ def updateAsset(immich_server_url, asset_id, api_key, dateTimeOriginal, descript
         st.error(f"Request failed: {str(e)}")
         print(f"Request failed: {str(e)}")
         return False
+    
+#For video function
+def getVideoAndSave(asset_id, immich_server_url,api_key,save_directory):   
+    # Ensure the directory exists
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
+
+    response = requests.get(f"{immich_server_url}/api/download/asset/{asset_id}", headers={'Accept': 'application/octet-stream', 'x-api-key': api_key}, stream=True)
+    file_path = os.path.join(save_directory, f"{asset_id}.mp4")
+
+    if response.status_code == 200 and 'video/' in response.headers.get('Content-Type', ''):
+        try:
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            return file_path
+        except Exception as e:
+            print(f"Failed to save video for asset_id {asset_id}. Error: {e}")
+            return None
+    else:
+        print(f"Failed to retrieve video for asset_id {asset_id}. Status Code: {response.status_code}, Content-Type: {response.headers.get('Content-Type')}")
+        return None

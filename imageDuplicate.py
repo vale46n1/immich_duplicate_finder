@@ -8,7 +8,7 @@ import faiss
 from torchvision.models import resnet152, ResNet152_Weights
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
-from api import streamAsset
+from api import getImage
 from utility import display_asset_column
 from api import getAssetInfo
 from db import load_duplicate_pairs, is_db_populated, save_duplicate_pair
@@ -63,7 +63,7 @@ def update_faiss_index(immich_server_url,api_key, asset_id):
     if asset_id in existing_metadata:
         return 'skipped'  # Skip processing this image
 
-    image = streamAsset(asset_id, immich_server_url, "Thumbnail (fast)", api_key)
+    image = getImage(asset_id, immich_server_url, "Thumbnail (fast)", api_key)
     if image is not None:
         features = extract_features(image)
     else:
@@ -216,9 +216,9 @@ def show_duplicate_photos_faiss(assets, limit, min_threshold, max_threshold,immi
                 progress_bar.progress(progress)
 
                 asset_id_1, asset_id_2 = dup_pair
-                # Assuming `streamAsset` and `getAssetInfo` are defined elsewhere in your code
-                image1 = streamAsset(asset_id_1, immich_server_url, 'Thumbnail (fast)', api_key)
-                image2 = streamAsset(asset_id_2, immich_server_url, 'Thumbnail (fast)', api_key)
+
+                image1 = getImage(asset_id_1, immich_server_url, 'Thumbnail (fast)', api_key)
+                image2 = getImage(asset_id_2, immich_server_url, 'Thumbnail (fast)', api_key)
                 asset1_info = getAssetInfo(asset_id_1, assets)
                 asset2_info = getAssetInfo(asset_id_2, assets)
 
