@@ -1,8 +1,7 @@
 from datetime import datetime
 import streamlit as st
 from datetime import datetime
-from immichApi import deleteAsset
-from db import getHashFromDb
+from api import deleteAsset
 
 def compare_and_color_data(value1, value2):
     date1 = datetime.fromisoformat(value1.rstrip('Z'))
@@ -52,42 +51,3 @@ def display_asset_column(col, asset1_info, asset2_info, asset_id_1, server_url, 
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
                 print(f"Failed to delete photo {asset_id_1}: {str(e)}")
-
-def findDuplicatesHash(assets,model):
-    """Find and return duplicates based on file hash, correlating specific resolutions."""
-    seen_hashes = {}
-    duplicates = []
-    resolution_counts  = {}  # Track resolution correlations for the same hash
-
-    for asset in assets:
-        if not st.session_state.get('is_trashed', False) and asset.get('isTrashed', False):
-            continue  # Skip trashed assets if include_trashed is False
-
-        resolution_height = asset.get('exifInfo', {}).get('exifImageHeight', 'Unknown')
-        resolution_width = asset.get('exifInfo', {}).get('exifImageWidth', 'Unknown')
-        resolution = "{} x {}".format(resolution_height, resolution_width)
-
-        if model=='thumbhash':
-            file_hash = asset.get('thumbhash')
-        if model=='dbhash':
-            file_hash = getHashFromDb(asset.get('id'))
-        else:
-            file_hash = asset.get('thumbhash')
-        
-        if file_hash in seen_hashes:
-            # Add the current asset as a duplicate
-            duplicates.append((seen_hashes[file_hash], asset))
-
-            # Increment count for this resolution among duplicates
-            resolution_counts[resolution] = resolution_counts.get(resolution, 0) + 1
-
-            # Also update for the resolution of the asset previously seen with this hash
-            prev_asset = seen_hashes[file_hash]
-            prev_resolution_height = prev_asset.get('exifInfo', {}).get('exifImageHeight', 'Unknown')
-            prev_resolution_width = prev_asset.get('exifInfo', {}).get('exifImageWidth', 'Unknown')
-            prev_resolution = "{} x {}".format(prev_resolution_height, prev_resolution_width)
-            resolution_counts[prev_resolution] = resolution_counts.get(prev_resolution, 0) + 1
-        else:
-            seen_hashes[file_hash] = asset
-
-    return duplicates, resolution_counts

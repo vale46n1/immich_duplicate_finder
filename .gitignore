@@ -1,5 +1,6 @@
 # Build cache
 __pycache__/
+env/
 
 ## Ignore db files
 settings.db
@@ -9,3 +10,6 @@ processed_assets.db
 ## Ignore other files created on build
 metadata.npy
 faiss_index.bin
+
+# Ignore all .code-workspace files
+*.code-workspace
