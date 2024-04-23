@@ -184,7 +184,12 @@ def generate_db_duplicate():
             idx1, idx2 = i, indices[0][j]
             if idx1 != idx2:
                 sorted_pair = (min(idx1, idx2), max(idx1, idx2))
-                save_duplicate_pair(metadata[sorted_pair[0]], metadata[sorted_pair[1]], distances[0][j])
+                # Check if the indices in sorted_pair are within the bounds of metadata
+                if sorted_pair[0] < len(metadata) and sorted_pair[1] < len(metadata):
+                    save_duplicate_pair(metadata[sorted_pair[0]], metadata[sorted_pair[1]], distances[0][j])
+                else:
+                    st.error(f"Metadata index out of range: {sorted_pair}")
+                    # Optionally log more details or handle this case further
 
     message_placeholder.text(f"Finished processing {num_vectors} vectors.")
     progress_bar.empty()
