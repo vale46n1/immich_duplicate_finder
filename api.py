@@ -100,13 +100,12 @@ def getAssetInfo(asset_id, assets):
         )
         lens_model = asset_info.get('exifInfo', {}).get('lensModel', 'Unknown')
         creation_date = asset_info.get('fileCreatedAt', 'Unknown')
-        is_external = asset_info.get('isExternal', False)
+        original_path = asset_info.get('originalPath', 'Unknown')
         is_offline = asset_info.get('isOffline', False)
-        is_read_only = asset_info.get('isReadOnly', False)
         is_trashed = asset_info.get('isTrashed', False)  # Extract isTrashed
         is_favorite = asset_info.get('isFavorite', False)        
         # Add more fields as needed and return them
-        return formatted_file_size, original_file_name, resolution, lens_model, creation_date, is_external, is_offline, is_read_only,is_trashed,is_favorite
+        return formatted_file_size, original_file_name, resolution, lens_model, creation_date, original_path, is_offline, is_trashed,is_favorite
     else:
         return None
     
