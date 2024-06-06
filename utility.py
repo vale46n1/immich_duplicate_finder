@@ -32,11 +32,10 @@ def display_asset_column(col, asset1_info, asset2_info, asset_id_1,asset_id_2, s
     - **Resolution:** {compare_and_color(asset1_info[2], asset2_info[2])}
     - **Lens Model:** {asset1_info[3]}
     - **Created At:** {compare_and_color_data(asset1_info[4], asset2_info[4])}
-    - **Is External:** {'Yes' if asset1_info[5] else 'No'}
+    - **Original Path:** {asset1_info[5]}
     - **Is Offline:** {'Yes' if asset1_info[6] else 'No'}
-    - **Is Read-Only:** {'Yes' if asset1_info[7] else 'No'}
-    - **Is Trashed:** {'Yes' if asset1_info[8] else 'No'}
-    - **Is Favorite:** {'Yes' if asset1_info[9] else 'No'}
+    - **Is Trashed:** {'Yes' if asset1_info[7] else 'No'}
+    - **Is Favorite:** {'Yes' if asset1_info[8] else 'No'}
     """
     with col:
         st.markdown(details, unsafe_allow_html=True)
