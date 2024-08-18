@@ -7,6 +7,7 @@ import numpy as np
 import faiss
 from torchvision.models import resnet152, ResNet152_Weights
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
+from PIL import Image
 
 from api import getImage
 from utility import display_asset_column
@@ -20,7 +21,15 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 # Load ResNet152 with pretrained weights
 model = resnet152(weights=ResNet152_Weights.DEFAULT)
 model.eval()  # Set model to evaluation mode
+
+def convert_image_to_rgb(image):
+    """Convert image to RGB if it's RGBA."""
+    if image.mode == 'RGBA':
+        return image.convert('RGB')
+    return image
+
 transform = Compose([
+    convert_image_to_rgb,
     Resize((224, 224)),  # Standard size for ImageNet-trained models
     ToTensor(),
     Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
